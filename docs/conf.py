@@ -53,7 +53,7 @@ html_theme_options = {
 html_context = {
     "display_github": True,
     "github_user": "jygaooooo",
-    "github_repo": "fmrihatestweb",
+    "github_repo": "fmriha.readthedocs.io",
     "github_version": "main",
     "conf_py_path": "/docs/",
 }
