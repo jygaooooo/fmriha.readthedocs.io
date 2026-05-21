@@ -46,12 +46,12 @@ xxx
    :maxdepth: 2
    :caption: Contents
 
-   Introduction to HA <notebooks/introduction>
    Installation <notebooks/installation>
+   Quick Start <notebooks/quick_start>
    Data Preparation <notebooks/data_prep>
    Response Hyperalignment (RHA) <notebooks/rha>
    Connectivity Hyperalignment (CHA) <notebooks/cha>
-   Statistical Metrics <notebooks/statistics>
+   Statistical Analysis <notebooks/statistics>
 
 Support
 -------------------
