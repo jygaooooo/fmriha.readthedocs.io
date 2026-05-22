@@ -1,4 +1,4 @@
-.. image:: _static/fmriha_logo.png
+.. image:: static/fmriha_logo.png
    :alt: fMRI-HA logo
    :width: 200px
    :align: left
@@ -52,6 +52,7 @@ xxx
    Response Hyperalignment (RHA) <notebooks/rha>
    Connectivity Hyperalignment (CHA) <notebooks/cha>
    Statistical Analysis <notebooks/statistics>
+   API References <notebooks/api>
 
 Support
 -------------------
