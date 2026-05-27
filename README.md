@@ -4,21 +4,27 @@ Full documentation at https://fmriha.readthedocs.io
 
 ## About
 
-`fMRI-HA` is a Python package designed for flexible hyperalignment analysis of
-functional magnetic resonance imaging (fMRI) data. It supports both response
-hyperalignment (RHA) and connectivity hyperalignment (CHA), works with multiple
-fMRI data formats, and provides tools for whole-brain searchlight analysis,
-ROI-level analysis, GUI-based workflows, and statistical evaluation.
+`fMRI-HA` is a modular Python toolkit for functional MRI hyperalignment and
+related multivariate analyses. It is designed to support common fMRI
+workflows including preprocessing, searchlight generation, response-based
+hyperalignment, connectivity-based hyperalignment, transformation into common
+spaces, downstream statistical analysis, pipeline script generation, and GUI
+for configuring and running major workflows.
 
-This tool allows you to easily do the following:
+The package is being organized as a reusable research toolkit so that users can
+run end-to-end alignment workflows while still accessing lower-level functions
+for custom pipelines.
 
-- **Perform response hyperalignment based on shared stimulus-evoked activity patterns.**
-- **Perform connectivity hyperalignment based on individual functional connectivity profiles.**
-- **Run whole-brain searchlight hyperalignment across cortical or volumetric fMRI data.**
-- **Apply hyperalignment within a specific region of interest for focused ROI-level analysis.**
-- **Process multiple fMRI data formats, including CIFTI, GIFTI, and NIFTI.**
-- **Complete the full hyperalignment pipeline through an interactive GUI workflow.**
-- **Calculate statistical metrics to evaluate and compare hyperalignment performance.**
+At its current stage, `fMRI-HA` provides:
+
+- preprocessing utilities for handling fMRI-related neuroimaging files and data preparation,
+- searchlight generation tools for both cortical surface data and volumetric data,
+- hyperalignment workflows for response-based and connectivity-based analyses,
+- common-space construction and transformation utilities,
+- statistical and MVPA-related analysis modules,
+- GUI for configuring, launching, and monitoring major hyperalignment,
+  ISC, IDM, and bsMVPC workflows,
+- pipeline configuration and script-generation helpers.
 
 ## Citation
 
@@ -33,6 +39,6 @@ please feel free to get in touch via the [Github issues](https://github.com/Sino
 
 ## License information
 
-`fMRI-HA` is distributed under the BSD 3-Clause "New" or "Revised" License.
+`fMRI-HA` is distributed under the MIT License.
 
-Please see the LICENSE file in the `fMRI-HA` repository for the full license text.
+Please see the [LICENSE](https://github.com/SinofWarth/GonglabHyperAligement/blob/main/LICENSE) file in the `fMRI-HA` repository for the full license text.
