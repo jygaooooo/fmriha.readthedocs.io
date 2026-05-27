@@ -65,5 +65,5 @@ License information
 
 ``fMRI-HA`` is distributed under the MIT License.
 
-Please see the `LICENSE <https://github.com/SinofWarth/GonglabHyperAligement/blob/main/LICENSE>`
+Please see the `LICENSE <https://github.com/SinofWarth/GonglabHyperAligement/blob/main/LICENSE>`_
 file in the `fMRI-HA` repository for the full license text.
