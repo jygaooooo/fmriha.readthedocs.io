@@ -3,7 +3,7 @@
    :width: 200px
    :align: left
 
-fMRI-HA: A Python-Based Workflow for fMRI Hyperalignment
+*fMRI-HA*: A Python-Based Workflow for fMRI Hyperalignment
 =======
 
 .. raw:: html
@@ -46,6 +46,7 @@ xxx
    :maxdepth: 2
    :caption: Contents
 
+   Understanding Hyperalignment (Optional Reading) <notebooks/understandHA>
    Installation <notebooks/installation>
    Quick Start <notebooks/quick_start>
    Data Preparation <notebooks/data_prep>
