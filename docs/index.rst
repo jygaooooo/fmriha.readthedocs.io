@@ -3,7 +3,7 @@
    :width: 200px
    :align: left
 
-fMRI-HA
+fMRI-HA: A Python-Based Workflow for fMRI Hyperalignment
 =======
 
 .. raw:: html
