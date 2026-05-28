@@ -59,12 +59,12 @@ Support
 -------------------
 
 If you encounter problems or bugs with ``fMRI-HA``, or have questions or improvement suggestions,
-please feel free to get in touch via the `Github issues <https://github.com/SinofWarth/GonglabHyperAligement/issues>`_.
+please feel free to get in touch via the `Github issues <https://github.com/SinofWarth/FMRI-HA_TEST/issues>`_.
 
 License information
 -------------------
 
 ``fMRI-HA`` is distributed under the MIT License.
 
-Please see the `LICENSE <https://github.com/SinofWarth/GonglabHyperAligement/blob/main/LICENSE>`_
+Please see the `LICENSE <https://github.com/SinofWarth/FMRI-HA_TEST/blob/main/LICENSE>`_
 file in the `fMRI-HA` repository for the full license text.
