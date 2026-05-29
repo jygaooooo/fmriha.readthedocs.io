@@ -4,12 +4,7 @@ Full documentation at https://fmriha.readthedocs.io
 
 ## About
 
-`fMRI-HA` is a modular Python toolkit for functional magnetic resonance imaging (fMRI) 
-hyperalignment and related multivariate analyses. It is designed to support common fMRI
-workflows including preprocessing, searchlight generation, response-based
-hyperalignment, connectivity-based hyperalignment, transformation into common
-spaces, downstream statistical analysis, pipeline script generation, and GUI
-for configuring and running major workflows.
+`fMRI-HA` is a modular Python toolkit for functional magnetic resonance imaging (fMRI) hyperalignment and related analyses. It is designed to support common fMRI workflows including preprocessing, searchlight generation, response-based hyperalignment, connectivity-based hyperalignment, transformation into common spaces, downstream statistical analysis, and pipeline script generation. These workflows are provided in both script-based and GUI-based versions for configuring and running major analyses.
 
 The package is being organized as a reusable research toolkit so that users can
 run end-to-end alignment workflows while still accessing lower-level functions
