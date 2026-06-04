@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hyperalignment Procrustes Rotation Demo</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --panel-border: #d9dee8;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --vertex: #222222;
+      --local: #8b8f97;
+      --theta: #FFBE7A;
+      --trajectory: #FFBE7A;
+      --accent: #374151;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 10px;
+    }
+
+    .wrap {
+      width: min(1080px, 96vw);
+    }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: 1px solid #c7d0dc;
+      background: #fff;
+      color: var(--text);
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+    }
+
+    button:hover {
+      background: #f8fafc;
+    }
+
+    .canvas-card {
+      border: 1px solid var(--panel-border);
+      border-radius: 18px;
+      padding: 10px;
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+    }
+
+    svg {
+      width: 100%;
+      height: auto;
+      display: block;
+      overflow: visible;
+    }
+
+    .panel-box {
+      fill: #fff;
+      stroke: var(--panel-border);
+      stroke-width: 1.2;
+    }
+
+    .panel-title {
+      font-size: 22px;
+      font-weight: 700;
+      fill: var(--text);
+    }
+
+    .panel-subtitle {
+      font-size: 17px;
+      fill: var(--muted);
+    }
+
+    .axis-label {
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .local-label {
+      font-size: 20px;
+      font-weight: 700;
+      fill: var(--local);
+    }
+
+    .formula {
+      font-size: 22px;
+      fill: var(--accent);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    .theta-text {
+      font-size: 20px;
+      font-weight: 700;
+      fill: var(--theta);
+    }
+
+    .theta-formula {
+      font-size: 24px;
+      fill: var(--accent);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="canvas-card">
+      <svg viewBox="0 0 1045 948" aria-label="Educational animation of Procrustes rotation in hyperalignment">
+        <defs>
+          <marker id="arrowVertex" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L0,6 L8,3 z" fill="#222222"></path>
+          </marker>
+
+          <marker id="arrowLocal" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L0,6 L7,3 z" fill="#8b8f97"></path>
+          </marker>
+
+          <marker id="arrowTrail" markerWidth="8" markerHeight="8" refX="6.5" refY="3" orient="auto" markerUnits="userSpaceOnUse" overflow="visible">
+            <path d="M0,0 L0,6 L7,3 z" fill="#FFBE7A"></path>
+          </marker>
+        </defs>
+
+        <rect class="panel-box" x="30" y="24" width="985" height="450" rx="16" ry="16"></rect>
+        <rect class="panel-box" x="30" y="486" width="985" height="450" rx="16" ry="16"></rect>
+
+        <text class="panel-title" x="522.5" y="65" text-anchor="middle">Subject 1 (Target Subject)</text>
+        <text class="panel-title" x="522.5" y="527" text-anchor="middle">Subject 2</text>
+
+        <g id="leftPanel"></g>
+        <g id="rightPanel"></g>
+      </svg>
+    </div>
+
+    <div class="controls">
+      <button id="replayBtn">Replay</button>
+      <button id="pauseBtn">Pause</button>
+    </div>
+  </div>
+
+  <script>
+    const svgNS = "http://www.w3.org/2000/svg";
+
+    const leftCfg = {
+      origin: { x: 270, y: 272 },
+      outerLen: 165,
+      innerLen: 155,
+      thetaDeg: 32,
+      pointLocal: { u: 72, v: 48 },
+      formulaX: 560,
+      formulaY: 150
+    };
+
+    const rightCfg = {
+      origin: { x: 270, y: 734 },
+      outerLen: 165,
+      innerLen: 155,
+      thetaStart: 124,
+      thetaEnd: 34,
+      pointLocal: { u: 70, v: 52 },
+      formulaX: 560,
+      formulaY: 612,
+      localLabelOffsets: {
+        local2: { x: -118, y: -14 }
+      }
+    };
+
+    const duration = 4000;
+    const holdStart = 500;
+    const holdEnd = 950;
+    const pointImageSize = 50;
+
+    let paused = false;
+    let rafId = null;
+    let startTime = null;
+    let lastElapsed = 0;
+
+    function createSvg(tag, attrs = {}) {
+      const el = document.createElementNS(svgNS, tag);
+
+      for (const [key, val] of Object.entries(attrs)) {
+        el.setAttribute(key, val);
+      }
+
+      return el;
+    }
+
+    function polarEndpoint(origin, angleDeg, length) {
+      const rad = angleDeg * Math.PI / 180;
+
+      return {
+        x: origin.x + length * Math.cos(rad),
+        y: origin.y - length * Math.sin(rad)
+      };
+    }
+
+    function rotateLocalToGlobal(origin, thetaDeg, u, v) {
+      const rad = thetaDeg * Math.PI / 180;
+      const xMath = u * Math.cos(rad) - v * Math.sin(rad);
+      const yMath = u * Math.sin(rad) + v * Math.cos(rad);
+
+      return {
+        x: origin.x + xMath,
+        y: origin.y - yMath
+      };
+    }
+
+    function arcPath(origin, radius, thetaDeg) {
+      const start = {
+        x: origin.x + radius,
+        y: origin.y
+      };
+
+      const end = {
+        x: origin.x + radius * Math.cos(thetaDeg * Math.PI / 180),
+        y: origin.y - radius * Math.sin(thetaDeg * Math.PI / 180)
+      };
+
+      const largeArc = Math.abs(thetaDeg) > 180 ? 1 : 0;
+      const sweep = thetaDeg >= 0 ? 0 : 1;
+
+      return `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArc} ${sweep} ${end.x} ${end.y}`;
+    }
+
+    function normalizeDeltaDeg(delta) {
+      let normalized = delta;
+
+      while (normalized > 180) {
+        normalized -= 360;
+      }
+
+      while (normalized < -180) {
+        normalized += 360;
+      }
+
+      return normalized;
+    }
+
+    function fmtSigned(val) {
+      const rounded = Math.round(val * 100) / 100;
+      return rounded.toFixed(2);
+    }
+
+    function fmtAbs(val) {
+      const rounded = Math.round(Math.abs(val) * 100) / 100;
+      return rounded.toFixed(2);
+    }
+
+    function buildPanel(containerId, cfg, dynamic = false) {
+      const g = document.getElementById(containerId);
+      g.innerHTML = '';
+
+      const outer = createSvg('g');
+      const trajectoryGroup = createSvg('g');
+      const inner = createSvg('g');
+      const formulaGroup = createSvg('g');
+
+      g.appendChild(outer);
+      g.appendChild(trajectoryGroup);
+      g.appendChild(inner);
+      g.appendChild(formulaGroup);
+
+      const { origin, outerLen, innerLen } = cfg;
+
+      const localLabelOffsets = {
+        local1: { x: 28, y: -12 },
+        local2: { x: -118, y: -14 },
+        ...(cfg.localLabelOffsets || {})
+      };
+
+      const xNeg = polarEndpoint(origin, 180, outerLen);
+      const xPos = polarEndpoint(origin, 0, outerLen);
+      const yNeg = polarEndpoint(origin, -90, outerLen);
+      const yPos = polarEndpoint(origin, 90, outerLen);
+
+      outer.appendChild(createSvg('line', {
+        x1: xNeg.x,
+        y1: xNeg.y,
+        x2: xPos.x,
+        y2: xPos.y,
+        stroke: 'var(--vertex)',
+        'stroke-width': 3.8,
+        'marker-end': 'url(#arrowVertex)'
+      }));
+
+      outer.appendChild(createSvg('line', {
+        x1: yNeg.x,
+        y1: yNeg.y,
+        x2: yPos.x,
+        y2: yPos.y,
+        stroke: 'var(--vertex)',
+        'stroke-width': 3.8,
+        'marker-end': 'url(#arrowVertex)'
+      }));
+
+      outer.appendChild(createSvg('circle', {
+        cx: origin.x,
+        cy: origin.y,
+        r: 5.5,
+        fill: '#374151'
+      }));
+
+      const vertex1Label = createSvg('text', {
+        x: xPos.x + 34,
+        y: xPos.y + 8,
+        class: 'axis-label',
+        fill: 'var(--vertex)'
+      });
+      vertex1Label.textContent = 'Vertex1';
+      outer.appendChild(vertex1Label);
+
+      const vertex2Label = createSvg('text', {
+        x: yPos.x + 24,
+        y: yPos.y - 6,
+        class: 'axis-label',
+        fill: 'var(--vertex)'
+      });
+      vertex2Label.textContent = 'Vertex2';
+      outer.appendChild(vertex2Label);
+
+      const local1Line = createSvg('line', {
+        stroke: 'var(--local)',
+        'stroke-width': 3,
+        'stroke-dasharray': '6 5',
+        'marker-end': 'url(#arrowLocal)'
+      });
+
+      const local2Line = createSvg('line', {
+        stroke: 'var(--local)',
+        'stroke-width': 3,
+        'stroke-dasharray': '6 5',
+        'marker-end': 'url(#arrowLocal)'
+      });
+
+      inner.appendChild(local1Line);
+      inner.appendChild(local2Line);
+
+      const local1Label = createSvg('text', {
+        class: 'local-label'
+      });
+      local1Label.textContent = 'Fur color';
+      inner.appendChild(local1Label);
+
+      const local2Label = createSvg('text', {
+        class: 'local-label'
+      });
+      local2Label.textContent = 'Body size';
+      inner.appendChild(local2Label);
+
+      const thetaArc = createSvg('path', {
+        fill: 'none',
+        stroke: 'var(--theta)',
+        'stroke-width': 2.5
+      });
+      inner.appendChild(thetaArc);
+
+      const thetaText = createSvg('text', {
+        class: 'theta-text',
+        'text-anchor': 'middle',
+        'dominant-baseline': 'central',
+        'alignment-baseline': 'middle'
+      });
+      inner.appendChild(thetaText);
+
+      const pointTrail = createSvg('path', {
+        fill: 'none',
+        stroke: 'var(--trajectory)',
+        'stroke-width': 3,
+        'stroke-linecap': 'round',
+        'stroke-dasharray': '5 7',
+        'marker-end': 'url(#arrowTrail)'
+      });
+      trajectoryGroup.appendChild(pointTrail);
+
+      const point = createSvg('image', {
+        href: 'pic/understandHA/html/cat1.png',
+        width: pointImageSize,
+        height: pointImageSize,
+        preserveAspectRatio: 'xMidYMid meet'
+      });
+      inner.appendChild(point);
+
+      const eq1 = createSvg('text', {
+        x: cfg.formulaX,
+        y: cfg.formulaY,
+        class: 'formula'
+      });
+
+      const eq2 = createSvg('text', {
+        x: cfg.formulaX,
+        y: cfg.formulaY + 36,
+        class: 'formula'
+      });
+
+      const thetaDegText = createSvg('text', {
+        x: cfg.formulaX,
+        y: cfg.formulaY + 72,
+        class: 'theta-formula'
+      });
+
+      formulaGroup.appendChild(eq1);
+      formulaGroup.appendChild(eq2);
+      formulaGroup.appendChild(thetaDegText);
+
+      function update(thetaDeg, showTrail = false) {
+        const local1Neg = polarEndpoint(origin, thetaDeg + 180, innerLen);
+        const local1Pos = polarEndpoint(origin, thetaDeg, innerLen);
+        const local2Neg = polarEndpoint(origin, thetaDeg - 90, innerLen);
+        const local2Pos = polarEndpoint(origin, thetaDeg + 90, innerLen);
+
+        local1Line.setAttribute('x1', local1Neg.x);
+        local1Line.setAttribute('y1', local1Neg.y);
+        local1Line.setAttribute('x2', local1Pos.x);
+        local1Line.setAttribute('y2', local1Pos.y);
+
+        local2Line.setAttribute('x1', local2Neg.x);
+        local2Line.setAttribute('y1', local2Neg.y);
+        local2Line.setAttribute('x2', local2Pos.x);
+        local2Line.setAttribute('y2', local2Pos.y);
+
+        local1Label.setAttribute('x', local1Pos.x + localLabelOffsets.local1.x);
+        local1Label.setAttribute('y', local1Pos.y + localLabelOffsets.local1.y);
+
+        local2Label.setAttribute('x', local2Pos.x + localLabelOffsets.local2.x);
+        local2Label.setAttribute('y', local2Pos.y + localLabelOffsets.local2.y);
+
+        thetaArc.setAttribute('d', arcPath(origin, 30, thetaDeg));
+
+        const textMid = polarEndpoint(origin, thetaDeg / 2, 42);
+        thetaText.setAttribute('x', textMid.x);
+        thetaText.setAttribute('y', textMid.y);
+        thetaText.textContent = 'θ';
+
+        const p = rotateLocalToGlobal(origin, thetaDeg, cfg.pointLocal.u, cfg.pointLocal.v);
+        point.setAttribute('x', p.x - pointImageSize / 2);
+        point.setAttribute('y', p.y - pointImageSize / 2);
+
+        if (showTrail && dynamic) {
+          const pStart = rotateLocalToGlobal(origin, cfg.thetaStart, cfg.pointLocal.u, cfg.pointLocal.v);
+          const radius = Math.hypot(pStart.x - origin.x, pStart.y - origin.y);
+
+          const startA = Math.atan2(origin.y - pStart.y, pStart.x - origin.x) * 180 / Math.PI;
+          const endA = Math.atan2(origin.y - p.y, p.x - origin.x) * 180 / Math.PI;
+          const diffA = normalizeDeltaDeg(endA - startA);
+
+          const motionSign = Math.sign(cfg.thetaEnd - cfg.thetaStart) || 1;
+          const pBefore = rotateLocalToGlobal(origin, thetaDeg - motionSign * 0.01, cfg.pointLocal.u, cfg.pointLocal.v);
+
+          const tangentX = p.x - pBefore.x;
+          const tangentY = p.y - pBefore.y;
+          const tangentLen = Math.hypot(tangentX, tangentY) || 1;
+          const unitTangentX = tangentX / tangentLen;
+          const unitTangentY = tangentY / tangentLen;
+
+          const halfImage = pointImageSize / 2;
+          const distanceToImageEdge = halfImage / Math.max(Math.abs(unitTangentX), Math.abs(unitTangentY));
+          const arrowPadding = 4;
+          const gapPx = distanceToImageEdge + arrowPadding;
+
+          const rawGapDeg = gapPx / radius * 180 / Math.PI;
+          const safeGapDeg = Math.min(rawGapDeg, Math.abs(diffA) * 0.55);
+          const direction = Math.sign(diffA) || -1;
+          const trailEndA = endA - direction * safeGapDeg;
+
+          const trailEnd = {
+            x: origin.x + radius * Math.cos(trailEndA * Math.PI / 180),
+            y: origin.y - radius * Math.sin(trailEndA * Math.PI / 180)
+          };
+
+          const trailDiffA = normalizeDeltaDeg(trailEndA - startA);
+          const largeArc = Math.abs(trailDiffA) > 180 ? 1 : 0;
+          const sweep = trailDiffA < 0 ? 1 : 0;
+
+          pointTrail.setAttribute(
+            'd',
+            `M ${pStart.x} ${pStart.y} A ${radius} ${radius} 0 ${largeArc} ${sweep} ${trailEnd.x} ${trailEnd.y}`
+          );
+          pointTrail.style.display = 'block';
+        } else {
+          pointTrail.style.display = dynamic ? 'none' : 'block';
+
+          if (!dynamic) {
+            pointTrail.setAttribute('d', '');
+          }
+        }
+
+        const cosT = Math.cos(thetaDeg * Math.PI / 180);
+        const sinT = Math.sin(thetaDeg * Math.PI / 180);
+
+        eq1.textContent = `Vertex1 = ${fmtSigned(cosT)}·Fur color ${sinT >= 0 ? '-' : '+'} ${fmtAbs(sinT)}·Body size`;
+        eq2.textContent = `Vertex2 = ${fmtSigned(sinT)}·Fur color ${cosT >= 0 ? '+' : '-'} ${fmtAbs(cosT)}·Body size`;
+        thetaDegText.textContent = `θ = ${thetaDeg.toFixed(1)}°`;
+      }
+
+      return {
+        update
+      };
+    }
+
+    const leftPanel = buildPanel('leftPanel', leftCfg, false);
+    const rightPanel = buildPanel('rightPanel', rightCfg, true);
+
+    leftPanel.update(leftCfg.thetaDeg);
+    rightPanel.update(rightCfg.thetaStart, false);
+
+    function easeInOutCubic(t) {
+      return t < 0.5
+        ? 4 * t * t * t
+        : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    }
+
+    function animate(ts) {
+      if (!startTime) {
+        startTime = ts;
+      }
+
+      const elapsed = ts - startTime;
+      lastElapsed = elapsed;
+
+      const total = holdStart + duration + holdEnd;
+
+      if (elapsed < holdStart) {
+        rightPanel.update(rightCfg.thetaStart, false);
+      } else if (elapsed < holdStart + duration) {
+        const t = (elapsed - holdStart) / duration;
+        const eased = easeInOutCubic(t);
+        const theta = rightCfg.thetaStart + (rightCfg.thetaEnd - rightCfg.thetaStart) * eased;
+        rightPanel.update(theta, true);
+      } else {
+        rightPanel.update(rightCfg.thetaEnd, true);
+      }
+
+      if (elapsed < total) {
+        rafId = requestAnimationFrame(animate);
+      } else {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+    }
+
+    function replay() {
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+      }
+
+      paused = false;
+      startTime = null;
+      lastElapsed = 0;
+
+      document.getElementById('pauseBtn').textContent = 'Pause';
+      rightPanel.update(rightCfg.thetaStart, false);
+
+      rafId = requestAnimationFrame(animate);
+    }
+
+    document.getElementById('replayBtn').addEventListener('click', replay);
+
+    document.getElementById('pauseBtn').addEventListener('click', (event) => {
+      if (paused) {
+        paused = false;
+        event.target.textContent = 'Pause';
+
+        rafId = requestAnimationFrame((ts) => {
+          startTime = ts - lastElapsed;
+          animate(ts);
+        });
+      } else {
+        paused = true;
+        event.target.textContent = 'Resume';
+
+        if (rafId) {
+          cancelAnimationFrame(rafId);
+          rafId = null;
+        }
+      }
+    });
+
+    replay();
+  </script>
+</body>
+</html>

@@ -1,4 +1,6 @@
 from datetime import datetime
+from pathlib import Path
+import shutil
 
 project = "fMRI-HA"
 author = "GongLab"
@@ -20,6 +22,7 @@ myst_enable_extensions = [
     "dollarmath",
     "amsmath",
 ]
+myst_heading_anchors = 3
 
 exclude_patterns = [
     "_build",
@@ -57,3 +60,30 @@ html_context = {
     "github_version": "main",
     "conf_py_path": "/docs/",
 }
+
+
+def _copy_understand_ha_assets(app, exception):
+    if exception is not None:
+        return
+
+    docs_dir = Path(__file__).parent
+    source_notebooks = docs_dir / "notebooks"
+    output_notebooks = Path(app.outdir) / "notebooks"
+    output_notebooks.mkdir(parents=True, exist_ok=True)
+
+    for name in [
+        "single_cat_feature_alignment.html",
+        "three_cat_geometry_alignment.html",
+    ]:
+        shutil.copy2(source_notebooks / name, output_notebooks / name)
+
+    source_pic_dir = source_notebooks / "pic" / "understandHA" / "html"
+    output_pic_dir = output_notebooks / "pic" / "understandHA" / "html"
+    output_pic_dir.mkdir(parents=True, exist_ok=True)
+
+    for name in ["cat1.png", "cat2.png", "cat3.png"]:
+        shutil.copy2(source_pic_dir / name, output_pic_dir / name)
+
+
+def setup(app):
+    app.connect("build-finished", _copy_understand_ha_assets)
