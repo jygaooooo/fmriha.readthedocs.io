@@ -54,7 +54,7 @@ xxx
    Connectivity Hyperalignment (CHA) <notebooks/cha>
    Statistical Analysis <notebooks/statistics>
    API References <notebooks/api>
-   Understanding Hyperalignment (Optional Reading) <notebooks/understandHA>
+   Understanding Hyperalignment (Optional Reading) <notebooks/understand_ha>
 
 Support
 -------------------

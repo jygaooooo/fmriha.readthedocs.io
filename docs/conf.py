@@ -78,8 +78,8 @@ def _copy_understand_ha_assets(app, exception):
     ]:
         shutil.copy2(source_notebooks / name, output_notebooks / name)
 
-    source_pic_dir = source_notebooks / "pic" / "understandHA" / "html"
-    output_pic_dir = output_notebooks / "pic" / "understandHA" / "html"
+    source_pic_dir = source_notebooks / "pic" / "understand_ha" / "html"
+    output_pic_dir = output_notebooks / "pic" / "understand_ha" / "html"
     output_pic_dir.mkdir(parents=True, exist_ok=True)
 
     for name in ["cat1.png", "cat2.png", "cat3.png"]:
