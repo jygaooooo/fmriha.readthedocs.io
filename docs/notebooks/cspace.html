@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Subjects Aligned to a Common Template</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --panel-border: #d9dee8;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --axis: #25282d;
+      --local: #8b8f97;
+      --template: #7c6db0;
+      --template-light: #d9d3ec;
+      --subject-1: #e69f57;
+      --subject-2: #4f9da6;
+      --subject-3: #d66b8a;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 0;
+      padding: 10px;
+      color: var(--text);
+      background: var(--bg);
+      font-family: Arial, Helvetica, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    .wrap {
+      width: min(910px, 96vw);
+    }
+
+    .canvas-card {
+      border: 1px solid var(--panel-border);
+      border-radius: 18px;
+      padding: 10px;
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+    }
+
+    svg {
+      width: 100%;
+      height: auto;
+      display: block;
+      overflow: visible;
+    }
+
+    .panel-box {
+      fill: #fff;
+      stroke: var(--panel-border);
+      stroke-width: 1.2;
+    }
+
+    .panel-title {
+      fill: var(--text);
+      font-size: 21px;
+      font-weight: 700;
+    }
+
+    .panel-subtitle {
+      fill: var(--muted);
+      font-size: 14px;
+    }
+
+    .axis-label {
+      fill: var(--axis);
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .local-label {
+      fill: var(--local);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .formula {
+      fill: var(--text);
+      font-size: 16px;
+    }
+
+    .theta-formula {
+      fill: var(--text);
+      font-size: 18px;
+    }
+
+    .status-label {
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .legend {
+      margin-top: 10px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 20px;
+      color: var(--muted);
+      font-size: 14px;
+      flex-wrap: wrap;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .swatch {
+      width: 26px;
+      height: 0;
+      border-top: 3px solid;
+    }
+
+    .swatch.template {
+      border-color: var(--template);
+      border-top-style: dashed;
+    }
+
+    .swatch.subject {
+      border-color: var(--subject-2);
+    }
+
+    .swatch.residual {
+      border-color: #a5a8ae;
+      border-top-style: dotted;
+    }
+
+    .note {
+      margin: 8px 12px 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.35;
+      text-align: center;
+    }
+
+    .controls {
+      margin-top: 10px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: 1px solid #c7d0dc;
+      border-radius: 10px;
+      padding: 8px 14px;
+      color: var(--text);
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #f8fafc;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="canvas-card">
+      <svg viewBox="0 0 910 930" aria-label="Three subjects with different representational geometries rotating toward a common template">
+        <defs>
+          <marker id="arrowAxis" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L0,6 L8,3 z" fill="#25282d"></path>
+          </marker>
+          <marker id="arrowLocal" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L0,6 L7,3 z" fill="#8b8f97"></path>
+          </marker>
+        </defs>
+
+        <rect class="panel-box" x="15" y="15" width="430" height="440" rx="16"></rect>
+        <rect class="panel-box" x="465" y="15" width="430" height="440" rx="16"></rect>
+        <rect class="panel-box" x="15" y="475" width="430" height="440" rx="16"></rect>
+        <rect class="panel-box" x="465" y="475" width="430" height="440" rx="16"></rect>
+
+        <text class="panel-title" x="230" y="48" text-anchor="middle">Common Template (Target)</text>
+
+        <text class="panel-title" x="680" y="48" text-anchor="middle">Subject 1</text>
+
+        <text class="panel-title" x="230" y="508" text-anchor="middle">Subject 2</text>
+
+        <text class="panel-title" x="680" y="508" text-anchor="middle">Subject 3</text>
+
+        <g id="templatePanel"></g>
+        <g id="subject1Panel"></g>
+        <g id="subject2Panel"></g>
+        <g id="subject3Panel"></g>
+      </svg>
+    </div>
+
+    <div class="controls">
+      <button id="replayBtn">Replay</button>
+      <button id="pauseBtn">Pause</button>
+    </div>
+  </div>
+
+  <script>
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const pointImageSize = 42;
+    const duration = 4200;
+    const holdStart = 650;
+    const holdEnd = 1200;
+    const targetAngle = 28;
+
+    const catImages = [
+      'pic/understandHA/html/cat1.png',
+      'pic/understandHA/html/cat2.png',
+      'pic/understandHA/html/cat3.png'
+    ];
+
+    /*
+      Corresponding cats preserve the same broad semantic relationships, while
+      each subject has genuinely different edge lengths and internal angles.
+    */
+    const templatePoints = [
+      { u: 76, v: 46 },
+      { u: -69, v: 63 },
+      { u: -72, v: -72 }
+    ];
+
+    const subject1Points = [
+      { u: 96, v: 31 },
+      { u: -54, v: 84 },
+      { u: -87, v: -59 }
+    ];
+
+    const subject2Points = [
+      { u: 61, v: 69 },
+      { u: -91, v: 43 },
+      { u: -53, v: -92 }
+    ];
+
+    const subject3Points = [
+      { u: 103, v: 60 },
+      { u: -79, v: 77 },
+      { u: -94, v: -40 }
+    ];
+
+    const panels = [
+      {
+        id: 'templatePanel',
+        type: 'template',
+        origin: { x: 230, y: 235 },
+        points: templatePoints,
+        color: 'var(--template)'
+      },
+      {
+        id: 'subject1Panel',
+        type: 'subject',
+        origin: { x: 680, y: 235 },
+        points: subject1Points,
+        color: 'var(--subject-1)',
+        thetaStart: 132
+      },
+      {
+        id: 'subject2Panel',
+        type: 'subject',
+        origin: { x: 230, y: 695 },
+        points: subject2Points,
+        color: 'var(--subject-2)',
+        thetaStart: -68
+      },
+      {
+        id: 'subject3Panel',
+        type: 'subject',
+        origin: { x: 680, y: 695 },
+        points: subject3Points,
+        color: 'var(--subject-3)',
+        thetaStart: 178
+      }
+    ];
+
+    let paused = false;
+    let rafId = null;
+    let startTime = null;
+    let lastElapsed = 0;
+
+    function createSvg(tag, attrs = {}) {
+      const el = document.createElementNS(svgNS, tag);
+
+      for (const [key, value] of Object.entries(attrs)) {
+        el.setAttribute(key, value);
+      }
+
+      return el;
+    }
+
+    function polarEndpoint(origin, angleDeg, length) {
+      const rad = angleDeg * Math.PI / 180;
+
+      return {
+        x: origin.x + length * Math.cos(rad),
+        y: origin.y - length * Math.sin(rad)
+      };
+    }
+
+    function rotateLocalToGlobal(origin, thetaDeg, point) {
+      const rad = thetaDeg * Math.PI / 180;
+      const xMath = point.u * Math.cos(rad) - point.v * Math.sin(rad);
+      const yMath = point.u * Math.sin(rad) + point.v * Math.cos(rad);
+
+      return {
+        x: origin.x + xMath,
+        y: origin.y - yMath
+      };
+    }
+
+    function centered(points) {
+      const meanU = points.reduce((sum, point) => sum + point.u, 0) / points.length;
+      const meanV = points.reduce((sum, point) => sum + point.v, 0) / points.length;
+
+      return points.map((point) => ({
+        u: point.u - meanU,
+        v: point.v - meanV
+      }));
+    }
+
+    function procrustesEndAngle(subjectPoints) {
+      const subject = centered(subjectPoints);
+      const template = centered(templatePoints);
+      let dot = 0;
+      let cross = 0;
+
+      subject.forEach((point, index) => {
+        dot += point.u * template[index].u + point.v * template[index].v;
+        cross += point.u * template[index].v - point.v * template[index].u;
+      });
+
+      return targetAngle + Math.atan2(cross, dot) * 180 / Math.PI;
+    }
+
+    function pointsAttribute(points) {
+      return points.map((point) => `${point.x},${point.y}`).join(' ');
+    }
+
+    function fmtSigned(value) {
+      return value.toFixed(2);
+    }
+
+    function fmtAbs(value) {
+      return Math.abs(value).toFixed(2);
+    }
+
+    function addFormula(group, origin) {
+      const x = origin.x;
+      const y = origin.y + 150;
+      const eq1 = createSvg('text', { x, y, class: 'formula', 'text-anchor': 'middle' });
+      const eq2 = createSvg('text', { x, y: y + 25, class: 'formula', 'text-anchor': 'middle' });
+      const theta = createSvg('text', { x, y: y + 52, class: 'theta-formula', 'text-anchor': 'middle' });
+
+      group.appendChild(eq1);
+      group.appendChild(eq2);
+      group.appendChild(theta);
+
+      return {
+        update(thetaDeg) {
+          const radians = thetaDeg * Math.PI / 180;
+          const cosTheta = Math.cos(radians);
+          const sinTheta = Math.sin(radians);
+
+          eq1.textContent = `Vertex1 = ${fmtSigned(cosTheta)}·Fur color ${sinTheta >= 0 ? '-' : '+'} ${fmtAbs(sinTheta)}·Body size`;
+          eq2.textContent = `Vertex2 = ${fmtSigned(sinTheta)}·Fur color ${cosTheta >= 0 ? '+' : '-'} ${fmtAbs(cosTheta)}·Body size`;
+          theta.textContent = `θ = ${thetaDeg.toFixed(1)}°`;
+        }
+      };
+    }
+
+    function addAxes(group, origin) {
+      const axisLen = 110;
+      const xNeg = polarEndpoint(origin, 180, axisLen);
+      const xPos = polarEndpoint(origin, 0, axisLen);
+      const yNeg = polarEndpoint(origin, -90, axisLen);
+      const yPos = polarEndpoint(origin, 90, axisLen);
+
+      group.appendChild(createSvg('line', {
+        x1: xNeg.x,
+        y1: xNeg.y,
+        x2: xPos.x,
+        y2: xPos.y,
+        stroke: 'var(--axis)',
+        'stroke-width': 2.7,
+        'marker-end': 'url(#arrowAxis)'
+      }));
+
+      group.appendChild(createSvg('line', {
+        x1: yNeg.x,
+        y1: yNeg.y,
+        x2: yPos.x,
+        y2: yPos.y,
+        stroke: 'var(--axis)',
+        'stroke-width': 2.7,
+        'marker-end': 'url(#arrowAxis)'
+      }));
+
+      const vertex1 = createSvg('text', {
+        x: xPos.x + 17,
+        y: xPos.y + 5,
+        class: 'axis-label'
+      });
+      vertex1.textContent = 'Vertex1';
+      group.appendChild(vertex1);
+
+      const vertex2 = createSvg('text', {
+        x: yPos.x + 12,
+        y: yPos.y - 6,
+        class: 'axis-label'
+      });
+      vertex2.textContent = 'Vertex2';
+      group.appendChild(vertex2);
+
+      group.appendChild(createSvg('circle', {
+        cx: origin.x,
+        cy: origin.y,
+        r: 4.2,
+        fill: '#374151'
+      }));
+    }
+
+    function addLocalAxes(group, origin) {
+      const localLen = 123;
+      const local1 = createSvg('line', {
+        stroke: 'var(--local)',
+        'stroke-width': 2.3,
+        'stroke-dasharray': '5 5',
+        'marker-end': 'url(#arrowLocal)'
+      });
+      const local2 = createSvg('line', {
+        stroke: 'var(--local)',
+        'stroke-width': 2.3,
+        'stroke-dasharray': '5 5',
+        'marker-end': 'url(#arrowLocal)'
+      });
+      const local1Label = createSvg('text', { class: 'local-label' });
+      const local2Label = createSvg('text', { class: 'local-label' });
+
+      local1Label.textContent = 'Fur color';
+      local2Label.textContent = 'Body size';
+      group.appendChild(local1);
+      group.appendChild(local2);
+      group.appendChild(local1Label);
+      group.appendChild(local2Label);
+
+      return {
+        update(thetaDeg) {
+          const local1Neg = polarEndpoint(origin, thetaDeg + 180, localLen);
+          const local1Pos = polarEndpoint(origin, thetaDeg, localLen);
+          const local2Neg = polarEndpoint(origin, thetaDeg - 90, localLen);
+          const local2Pos = polarEndpoint(origin, thetaDeg + 90, localLen);
+
+          local1.setAttribute('x1', local1Neg.x);
+          local1.setAttribute('y1', local1Neg.y);
+          local1.setAttribute('x2', local1Pos.x);
+          local1.setAttribute('y2', local1Pos.y);
+          local2.setAttribute('x1', local2Neg.x);
+          local2.setAttribute('y1', local2Neg.y);
+          local2.setAttribute('x2', local2Pos.x);
+          local2.setAttribute('y2', local2Pos.y);
+
+          local1Label.setAttribute('x', local1Pos.x + 8);
+          local1Label.setAttribute('y', local1Pos.y - 8);
+          local2Label.setAttribute('x', local2Pos.x - 78);
+          local2Label.setAttribute('y', local2Pos.y - 8);
+        }
+      };
+    }
+
+    function addTemplateGhost(group, origin) {
+      const templateGlobal = templatePoints.map((point) =>
+        rotateLocalToGlobal(origin, targetAngle, point)
+      );
+
+      const polygon = createSvg('polygon', {
+        points: pointsAttribute(templateGlobal),
+        fill: 'rgba(124, 109, 176, 0.035)',
+        stroke: 'var(--template-light)',
+        'stroke-width': 2.5,
+        'stroke-dasharray': '7 6',
+        'stroke-linejoin': 'round'
+      });
+      group.appendChild(polygon);
+
+      templateGlobal.forEach((point) => {
+        group.appendChild(createSvg('circle', {
+          cx: point.x,
+          cy: point.y,
+          r: 6,
+          fill: '#fff',
+          stroke: 'var(--template-light)',
+          'stroke-width': 2.5
+        }));
+      });
+
+      return templateGlobal;
+    }
+
+    function addPointImages(group, pointCount) {
+      return Array.from({ length: pointCount }, (_, index) => {
+        const image = createSvg('image', {
+          href: catImages[index],
+          width: pointImageSize,
+          height: pointImageSize,
+          preserveAspectRatio: 'xMidYMid meet'
+        });
+        group.appendChild(image);
+        return image;
+      });
+    }
+
+    function buildTemplatePanel(cfg) {
+      const group = document.getElementById(cfg.id);
+      const axesGroup = createSvg('g');
+      const localGroup = createSvg('g');
+      const geometryGroup = createSvg('g');
+      const formulaGroup = createSvg('g');
+
+      group.appendChild(axesGroup);
+      group.appendChild(localGroup);
+      group.appendChild(geometryGroup);
+      group.appendChild(formulaGroup);
+      addAxes(axesGroup, cfg.origin);
+
+      const localAxes = addLocalAxes(localGroup, cfg.origin);
+      localAxes.update(targetAngle);
+      const formula = addFormula(formulaGroup, cfg.origin);
+      formula.update(targetAngle);
+
+      const globalPoints = cfg.points.map((point) =>
+        rotateLocalToGlobal(cfg.origin, targetAngle, point)
+      );
+      geometryGroup.appendChild(createSvg('polygon', {
+        points: pointsAttribute(globalPoints),
+        fill: 'rgba(124, 109, 176, 0.08)',
+        stroke: cfg.color,
+        'stroke-width': 3,
+        'stroke-linejoin': 'round'
+      }));
+
+      const images = addPointImages(geometryGroup, cfg.points.length);
+      images.forEach((image, index) => {
+        image.setAttribute('x', globalPoints[index].x - pointImageSize / 2);
+        image.setAttribute('y', globalPoints[index].y - pointImageSize / 2);
+      });
+    }
+
+    function buildSubjectPanel(cfg) {
+      const group = document.getElementById(cfg.id);
+      const axesGroup = createSvg('g');
+      const ghostGroup = createSvg('g');
+      const residualGroup = createSvg('g');
+      const localGroup = createSvg('g');
+      const geometryGroup = createSvg('g');
+      const formulaGroup = createSvg('g');
+
+      group.appendChild(axesGroup);
+      group.appendChild(ghostGroup);
+      group.appendChild(residualGroup);
+      group.appendChild(localGroup);
+      group.appendChild(geometryGroup);
+      group.appendChild(formulaGroup);
+
+      addAxes(axesGroup, cfg.origin);
+      const templateGlobal = addTemplateGhost(ghostGroup, cfg.origin);
+      const localAxes = addLocalAxes(localGroup, cfg.origin);
+      const formula = addFormula(formulaGroup, cfg.origin);
+
+      const polygon = createSvg('polygon', {
+        fill: 'rgba(79, 157, 166, 0.055)',
+        stroke: cfg.color,
+        'stroke-width': 3,
+        'stroke-linejoin': 'round'
+      });
+      geometryGroup.appendChild(polygon);
+      const images = addPointImages(geometryGroup, cfg.points.length);
+
+      const residualLines = cfg.points.map(() => {
+        const line = createSvg('line', {
+          stroke: '#a5a8ae',
+          'stroke-width': 1.8,
+          'stroke-dasharray': '2 5',
+          'stroke-linecap': 'round',
+          opacity: 0
+        });
+        residualGroup.appendChild(line);
+        return line;
+      });
+
+      const thetaEnd = procrustesEndAngle(cfg.points);
+
+      function update(thetaDeg, progress) {
+        localAxes.update(thetaDeg);
+        formula.update(thetaDeg);
+        const subjectGlobal = cfg.points.map((point) =>
+          rotateLocalToGlobal(cfg.origin, thetaDeg, point)
+        );
+        polygon.setAttribute('points', pointsAttribute(subjectGlobal));
+
+        images.forEach((image, index) => {
+          image.setAttribute('x', subjectGlobal[index].x - pointImageSize / 2);
+          image.setAttribute('y', subjectGlobal[index].y - pointImageSize / 2);
+        });
+
+        const residualOpacity = Math.max(0, (progress - 0.72) / 0.28);
+        residualLines.forEach((line, index) => {
+          line.setAttribute('x1', subjectGlobal[index].x);
+          line.setAttribute('y1', subjectGlobal[index].y);
+          line.setAttribute('x2', templateGlobal[index].x);
+          line.setAttribute('y2', templateGlobal[index].y);
+          line.setAttribute('opacity', residualOpacity.toFixed(3));
+        });
+      }
+
+      return {
+        thetaStart: cfg.thetaStart,
+        thetaEnd,
+        update
+      };
+    }
+
+    buildTemplatePanel(panels[0]);
+    const subjects = panels.slice(1).map(buildSubjectPanel);
+
+    function easeInOutCubic(t) {
+      return t < 0.5
+        ? 4 * t * t * t
+        : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    }
+
+    function updateSubjects(progress) {
+      const eased = easeInOutCubic(progress);
+
+      subjects.forEach((subject) => {
+        const theta = subject.thetaStart + (subject.thetaEnd - subject.thetaStart) * eased;
+        subject.update(theta, progress);
+      });
+    }
+
+    function animate(timestamp) {
+      if (!startTime) {
+        startTime = timestamp;
+      }
+
+      const elapsed = timestamp - startTime;
+      lastElapsed = elapsed;
+      const total = holdStart + duration + holdEnd;
+
+      if (elapsed < holdStart) {
+        updateSubjects(0);
+      } else if (elapsed < holdStart + duration) {
+        updateSubjects((elapsed - holdStart) / duration);
+      } else {
+        updateSubjects(1);
+      }
+
+      if (elapsed < total) {
+        rafId = requestAnimationFrame(animate);
+      } else {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+    }
+
+    function replay() {
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+      }
+
+      paused = false;
+      startTime = null;
+      lastElapsed = 0;
+      document.getElementById('pauseBtn').textContent = 'Pause';
+      updateSubjects(0);
+      rafId = requestAnimationFrame(animate);
+    }
+
+    document.getElementById('replayBtn').addEventListener('click', replay);
+
+    document.getElementById('pauseBtn').addEventListener('click', (event) => {
+      if (paused) {
+        paused = false;
+        event.target.textContent = 'Pause';
+        rafId = requestAnimationFrame((timestamp) => {
+          startTime = timestamp - lastElapsed;
+          animate(timestamp);
+        });
+      } else {
+        paused = true;
+        event.target.textContent = 'Resume';
+
+        if (rafId) {
+          cancelAnimationFrame(rafId);
+          rafId = null;
+        }
+      }
+    });
+
+    replay();
+  </script>
+</body>
+</html>
