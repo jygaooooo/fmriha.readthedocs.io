@@ -16,10 +16,10 @@ At its current stage, `fMRI-HA` provides:
 - searchlight generation tools for both cortical surface data and volumetric data,
 - hyperalignment workflows for response-based and connectivity-based analyses,
 - common-space construction and transformation utilities,
-- Dask-enabled versions of major hyperalignment workflows for distributed computing,
 - statistical and MVPA-related analysis modules,
 - GUI for configuring, launching, and monitoring major hyperalignment,
   ISC, IDM, and bsMVPC workflows,
+- Dask-enabled versions of major hyperalignment workflows for distributed computing,
 - pipeline configuration and script-generation helpers.
 
 ## Citation
