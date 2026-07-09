@@ -49,6 +49,7 @@ xxx
    :caption: Contents
 
    Installation <notebooks/installation>
+   Overview <notebooks/Overview>
    Quick Start <notebooks/quick_start>
    Data Preparation <notebooks/data_prep>
    Response Hyperalignment (RHA) <notebooks/rha>
