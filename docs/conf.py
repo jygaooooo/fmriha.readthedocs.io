@@ -75,6 +75,9 @@ def _copy_understand_ha_assets(app, exception):
         "single_stimuli.html",
         "multi_stimuli.html",
         "cspace.html",
+        "2sub_pattern_align.html",
+        "cspace_construct_pattern_align.html",
+        "alignment_pattern_align.html",
     ]:
         shutil.copy2(source_notebooks / name, output_notebooks / name)
 

@@ -57,8 +57,6 @@ xxx
    Statistical Analysis <notebooks/statistics>
    API References <notebooks/api>
    Understanding Hyperalignment (Optional Reading) <notebooks/understand_ha>
-   Pattern-Alignment Perspective <notebooks/understand_ha_pattern>
-   Profile-Alignment Perspective <notebooks/understand_ha_profile>
 
 Support
 -------------------
