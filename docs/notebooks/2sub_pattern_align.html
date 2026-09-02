@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hyperalignment Procrustes Rotation Demo</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --panel-border: #d9dee8;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --vertex: #222222;
+      --cat-connector: #FFBE7A;
+      --target-connector: #5B8FF9;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 10px;
+    }
+
+    .wrap {
+      width: min(1080px, 96vw);
+    }
+
+    .controls {
+      margin-top: 10px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .controls button {
+      min-width: 88px;
+      padding: 8px 18px;
+      border: 1px solid #cbd3df;
+      border-radius: 9px;
+      background: #ffffff;
+      color: var(--text);
+      font: 400 14px Arial, Helvetica, sans-serif;
+      cursor: pointer;
+      box-shadow: 0 2px 7px rgba(32, 40, 56, 0.08);
+    }
+
+    .controls button:hover {
+      background: #f7f8fb;
+    }
+
+    .canvas-card {
+      border: 1px solid var(--panel-border);
+      border-radius: 18px;
+      padding: 10px;
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+    }
+
+    svg {
+      width: 100%;
+      height: auto;
+      display: block;
+      overflow: visible;
+    }
+
+    .panel-box {
+      fill: #fff;
+      stroke: var(--panel-border);
+      stroke-width: 1.2;
+    }
+
+    .panel-title {
+      font-size: 18px;
+      font-weight: 700;
+      fill: var(--text);
+    }
+
+    .panel-subtitle {
+      font-size: 13px;
+      fill: var(--muted);
+    }
+
+    .axis-label {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="canvas-card">
+      <svg viewBox="0 0 775 360" aria-label="Educational animation of Procrustes rotation in hyperalignment">
+        <defs>
+          <marker id="arrowVertex" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L0,6 L8,3 z" fill="#222222"></path>
+          </marker>
+
+        </defs>
+
+        <rect class="panel-box" x="10" y="24" width="370" height="310" rx="16" ry="16"></rect>
+        <rect class="panel-box" x="395" y="24" width="370" height="310" rx="16" ry="16"></rect>
+
+        <text class="panel-title" x="195" y="53" text-anchor="middle">Subject 1</text>
+        <text class="panel-subtitle" x="195" y="74" text-anchor="middle">Target Subject</text>
+        <text class="panel-title" x="580" y="53" text-anchor="middle">Subject 2</text>
+
+        <g id="leftPanel"></g>
+        <g id="rightPanel"></g>
+      </svg>
+    </div>
+
+    <div class="controls">
+      <button id="replayBtn" type="button">Replay</button>
+      <button id="pauseBtn" type="button">Pause</button>
+    </div>
+  </div>
+
+  <script>
+    const svgNS = "http://www.w3.org/2000/svg";
+
+    const subject1CatPoints = [
+      { href: 'pic/understand_ha/html/cat1.png', u: 50, v: 35 },
+      { href: 'pic/understand_ha/html/cat2.png', u: -15, v: 35 },
+      { href: 'pic/understand_ha/html/cat3.png', u: -35, v: -55 }
+    ];
+
+    const subject2CatPoints = [
+      { href: 'pic/understand_ha/html/cat1.png', u: 55, v: 30 },
+      { href: 'pic/understand_ha/html/cat2.png', u: -12, v: 27 },
+      { href: 'pic/understand_ha/html/cat3.png', u: -30, v: -60 }
+    ];
+
+    const leftCfg = {
+      origin: { x: 160, y: 214 },
+      outerLen: 95,
+      thetaDeg: 32,
+      points: subject1CatPoints
+    };
+
+    const rightCfg = {
+      origin: { x: 545, y: 214 },
+      outerLen: 95,
+      thetaStart: 124,
+      thetaEnd: 34,
+      points: subject2CatPoints,
+      targetPoints: subject1CatPoints,
+      targetTheta: 32
+    };
+
+    const duration = 4000;
+    const holdStart = 500;
+    const holdEnd = 950;
+    const pointImageSize = 35;
+
+    let paused = false;
+    let rafId = null;
+    let startTime = null;
+    let lastElapsed = 0;
+
+    function createSvg(tag, attrs = {}) {
+      const el = document.createElementNS(svgNS, tag);
+
+      for (const [key, val] of Object.entries(attrs)) {
+        el.setAttribute(key, val);
+      }
+
+      return el;
+    }
+
+    function polarEndpoint(origin, angleDeg, length) {
+      const rad = angleDeg * Math.PI / 180;
+
+      return {
+        x: origin.x + length * Math.cos(rad),
+        y: origin.y - length * Math.sin(rad)
+      };
+    }
+
+    function rotateLocalToGlobal(origin, thetaDeg, u, v) {
+      const rad = thetaDeg * Math.PI / 180;
+      const xMath = u * Math.cos(rad) - v * Math.sin(rad);
+      const yMath = u * Math.sin(rad) + v * Math.cos(rad);
+
+      return {
+        x: origin.x + xMath,
+        y: origin.y - yMath
+      };
+    }
+
+    function buildPanel(containerId, cfg) {
+      const g = document.getElementById(containerId);
+      g.innerHTML = '';
+
+      const outer = createSvg('g');
+      const inner = createSvg('g');
+
+      g.appendChild(outer);
+      g.appendChild(inner);
+
+      const { origin, outerLen } = cfg;
+      const points = cfg.points || [];
+
+      const xPos = polarEndpoint(origin, 0, outerLen);
+      const yPos = polarEndpoint(origin, 90, outerLen);
+      const zPos = polarEndpoint(origin, 225, outerLen);
+
+      outer.appendChild(createSvg('line', {
+        x1: origin.x,
+        y1: origin.y,
+        x2: xPos.x,
+        y2: xPos.y,
+        stroke: 'var(--vertex)',
+        'stroke-width': 2.6,
+        'marker-end': 'url(#arrowVertex)'
+      }));
+
+      outer.appendChild(createSvg('line', {
+        x1: origin.x,
+        y1: origin.y,
+        x2: yPos.x,
+        y2: yPos.y,
+        stroke: 'var(--vertex)',
+        'stroke-width': 2.6,
+        'marker-end': 'url(#arrowVertex)'
+      }));
+
+      outer.appendChild(createSvg('line', {
+        x1: origin.x,
+        y1: origin.y,
+        x2: zPos.x,
+        y2: zPos.y,
+        stroke: 'var(--vertex)',
+        'stroke-width': 2.6,
+        'marker-end': 'url(#arrowVertex)'
+      }));
+
+      outer.appendChild(createSvg('circle', {
+        cx: origin.x,
+        cy: origin.y,
+        r: 4,
+        fill: '#374151'
+      }));
+
+      const vertex1Label = createSvg('text', {
+        x: xPos.x + 13,
+        y: xPos.y + 6,
+        class: 'axis-label',
+        fill: 'var(--vertex)'
+      });
+      vertex1Label.textContent = 'Vertex1';
+      outer.appendChild(vertex1Label);
+
+      const vertex2Label = createSvg('text', {
+        x: yPos.x - 8,
+        y: yPos.y - 14,
+        class: 'axis-label',
+        fill: 'var(--vertex)'
+      });
+      vertex2Label.textContent = 'Vertex2';
+      outer.appendChild(vertex2Label);
+
+      const vertex3Label = createSvg('text', {
+        x: zPos.x + 15,
+        y: zPos.y + 20,
+        class: 'axis-label',
+        fill: 'var(--vertex)',
+        'text-anchor': 'end'
+      });
+      vertex3Label.textContent = 'Vertex3';
+      outer.appendChild(vertex3Label);
+
+      if (cfg.targetPoints && Number.isFinite(cfg.targetTheta)) {
+        const targetPoints = cfg.targetPoints.map((point) => {
+          const p = rotateLocalToGlobal(origin, cfg.targetTheta, point.u, point.v);
+          return `${p.x},${p.y}`;
+        });
+        inner.appendChild(createSvg('polyline', {
+          points: `${targetPoints.join(' ')} ${targetPoints[0]}`,
+          fill: 'none',
+          stroke: 'var(--target-connector)',
+          'stroke-width': 2.2,
+          'stroke-linecap': 'round',
+          'stroke-linejoin': 'round',
+          'stroke-dasharray': '7 6',
+          opacity: 0.65
+        }));
+      }
+
+      const catConnector = createSvg('polyline', {
+        fill: 'none',
+        stroke: 'var(--cat-connector)',
+        'stroke-width': 2,
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round'
+      });
+      inner.appendChild(catConnector);
+
+      const pointItems = points.map((pointCfg) => {
+        const size = pointCfg.size || pointImageSize;
+
+        const point = createSvg('image', {
+          href: pointCfg.href,
+          width: size,
+          height: size,
+          preserveAspectRatio: 'xMidYMid meet'
+        });
+        inner.appendChild(point);
+
+        return {
+          ...pointCfg,
+          size,
+          point
+        };
+      });
+
+      function update(thetaDeg) {
+        const connectorPoints = [];
+
+        pointItems.forEach((pointItem) => {
+          const p = rotateLocalToGlobal(origin, thetaDeg, pointItem.u, pointItem.v);
+          pointItem.point.setAttribute('x', p.x - pointItem.size / 2);
+          pointItem.point.setAttribute('y', p.y - pointItem.size / 2);
+          connectorPoints.push(`${p.x},${p.y}`);
+        });
+
+        if (connectorPoints.length > 1) {
+          catConnector.setAttribute('points', `${connectorPoints.join(' ')} ${connectorPoints[0]}`);
+          catConnector.style.display = 'block';
+        } else {
+          catConnector.setAttribute('points', '');
+          catConnector.style.display = 'none';
+        }
+
+      }
+
+      return { update };
+    }
+
+    const leftPanel = buildPanel('leftPanel', leftCfg);
+    const rightPanel = buildPanel('rightPanel', rightCfg);
+
+    leftPanel.update(leftCfg.thetaDeg);
+    rightPanel.update(rightCfg.thetaStart);
+
+    function easeInOutCubic(t) {
+      return t < 0.5
+        ? 4 * t * t * t
+        : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    }
+
+    function animate(ts) {
+      if (!startTime) {
+        startTime = ts;
+      }
+
+      const elapsed = ts - startTime;
+      lastElapsed = elapsed;
+
+      const total = holdStart + duration + holdEnd;
+
+      if (elapsed < holdStart) {
+        rightPanel.update(rightCfg.thetaStart);
+      } else if (elapsed < holdStart + duration) {
+        const t = (elapsed - holdStart) / duration;
+        const eased = easeInOutCubic(t);
+        const theta = rightCfg.thetaStart + (rightCfg.thetaEnd - rightCfg.thetaStart) * eased;
+        rightPanel.update(theta);
+      } else {
+        rightPanel.update(rightCfg.thetaEnd);
+      }
+
+      if (elapsed < total) {
+        rafId = requestAnimationFrame(animate);
+      } else {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+    }
+
+    function replay() {
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+      }
+
+      paused = false;
+      startTime = null;
+      lastElapsed = 0;
+
+      document.getElementById('pauseBtn').textContent = 'Pause';
+      rightPanel.update(rightCfg.thetaStart);
+
+      rafId = requestAnimationFrame(animate);
+    }
+
+    document.getElementById('replayBtn').addEventListener('click', replay);
+
+    document.getElementById('pauseBtn').addEventListener('click', (event) => {
+      if (paused) {
+        paused = false;
+        event.target.textContent = 'Pause';
+
+        rafId = requestAnimationFrame((ts) => {
+          startTime = ts - lastElapsed;
+          animate(ts);
+        });
+      } else {
+        paused = true;
+        event.target.textContent = 'Resume';
+
+        if (rafId) {
+          cancelAnimationFrame(rafId);
+          rafId = null;
+        }
+      }
+    });
+
+    replay();
+  </script>
+</body>
+</html>

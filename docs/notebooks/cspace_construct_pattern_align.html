@@ -1,0 +1,2591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dynamic Common Template</title>
+
+  <style>
+    :root {
+      --bg: #ffffff;
+      --panel-border: #d8deea;
+      --text: #202838;
+      --muted: #667085;
+      --axis: #25282d;
+
+      --template: #7c6db0;
+      --template-light: #d9d3ec;
+
+      --subject-1: #e69f57;
+      --subject-2: #4f9da6;
+      --subject-3: #d66b8a;
+      --subject-4: #6f9e6e;
+      --subject-5: #c78f52;
+      --subject-6: #6f86c4;
+      --subject-7: #a774b5;
+      --subject-8: #5c9c8b;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      background: var(--bg);
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--text);
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 0;
+      padding: 10px;
+    }
+
+    /*
+      整体比例 16:7
+    */
+    .wrap {
+      width: min(1000px, 96vw);
+    }
+
+    .canvas-card {
+      border: 1px solid var(--panel-border);
+      border-radius: 18px;
+      padding: 10px;
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+    }
+
+    .controls {
+      margin-top: 10px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .controls button {
+      min-width: 88px;
+      padding: 8px 18px;
+      border: 1px solid #cbd3df;
+      border-radius: 9px;
+      background: #ffffff;
+      color: var(--text);
+      font: 400 14px Arial, Helvetica, sans-serif;
+      cursor: pointer;
+      box-shadow: 0 2px 7px rgba(32, 40, 56, 0.08);
+    }
+
+    .controls button:hover {
+      background: #f7f8fb;
+    }
+
+    svg {
+      display: block;
+      width: 100%;
+      height: auto;
+      overflow: visible;
+    }
+
+    /*
+      边框粗细继续保持最初版本
+    */
+    .subject-card {
+      fill: rgba(255, 255, 255, 0.98);
+      stroke: var(--panel-border);
+      stroke-width: 1.1;
+      filter: url(#cardShadow);
+    }
+
+    .template-box {
+      fill: rgba(255, 255, 255, 0.98);
+      stroke: #303849;
+      stroke-width: 1.6;
+      filter: url(#templateShadow);
+    }
+
+    /*
+      Subject 卡片背景与内容分别放到不同图层，
+      但使用一致的透明度动画。
+    */
+    .subject-card-node,
+    .subject-node {
+      opacity: 0.24;
+      transition: opacity 0.5s ease;
+    }
+
+    .subject-card-node.active,
+    .subject-node.active {
+      opacity: 1;
+    }
+
+    .panel-title {
+      fill: var(--text);
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.15px;
+    }
+
+    .panel-title-box {
+      fill: #f5f7fa;
+      stroke: #cfd6e2;
+      stroke-width: 1;
+    }
+
+    .template-title {
+      fill: var(--text);
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }
+
+    .template-title-box {
+      fill: #f3f0fa;
+      stroke: var(--template-light);
+      stroke-width: 1.2;
+    }
+
+    .axis-label {
+      fill: var(--axis);
+      font-size: 12.5px;
+      font-weight: 700;
+    }
+
+    .template-axis-label {
+      fill: var(--axis);
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    /*
+      所有箭头即使 Subject 尚未加入，
+      也保持一个可见但较淡的状态。
+
+      当前加入的 Subject 对应箭头再明显增强。
+    */
+    .mapping-arrow {
+      fill: none;
+      stroke: var(--template);
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      opacity: 0.16;
+      transition: opacity 0.5s ease;
+      marker-end: url(#arrowToTemplate);
+    }
+
+    .mapping-arrow.active {
+      opacity: 0.74;
+    }
+
+    .template-history {
+      fill: none;
+      stroke: var(--template-light);
+      stroke-width: 2;
+      stroke-dasharray: 7 6;
+      stroke-linejoin: round;
+      opacity: 0;
+    }
+
+    .template-polygon {
+      stroke: var(--template);
+      stroke-width: 3;
+      stroke-linejoin: round;
+      fill: rgba(124, 109, 176, 0.08);
+    }
+
+    .subject-polygon {
+      stroke-width: 2.2;
+      stroke-linejoin: round;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="wrap">
+  <div class="canvas-card">
+
+    <svg
+      viewBox="350 0 900 700"
+      preserveAspectRatio="xMidYMid meet"
+      aria-label="Subjects dynamically forming a common template"
+    >
+
+      <defs>
+
+        <filter id="cardShadow" x="-18%" y="-18%" width="136%" height="145%">
+          <feDropShadow
+            dx="0"
+            dy="3"
+            stdDeviation="4"
+            flood-color="#344054"
+            flood-opacity="0.08"
+          ></feDropShadow>
+        </filter>
+
+        <filter id="templateShadow" x="-12%" y="-16%" width="124%" height="140%">
+          <feDropShadow
+            dx="0"
+            dy="7"
+            stdDeviation="9"
+            flood-color="#344054"
+            flood-opacity="0.12"
+          ></feDropShadow>
+        </filter>
+
+        <marker
+          id="arrowAxis"
+          markerWidth="8"
+          markerHeight="8"
+          refX="7"
+          refY="3"
+          orient="auto"
+          markerUnits="strokeWidth"
+        >
+          <path
+            d="M0,0 L0,6 L8,3 z"
+            fill="#25282d"
+          ></path>
+        </marker>
+
+        <marker
+          id="arrowToTemplate"
+          markerWidth="8"
+          markerHeight="8"
+          refX="7"
+          refY="4"
+          orient="auto"
+          markerUnits="strokeWidth"
+        >
+          <path
+            d="M0,0 L0,8 L8,4 z"
+            fill="#7c6db0"
+          ></path>
+        </marker>
+
+      </defs>
+
+
+      <!-- =====================================================
+           图层 1：
+           Subject 卡片白色背景
+
+           箭头会画在这一层上面，
+           因此不会再被白色卡片覆盖。
+           ===================================================== -->
+
+      <g id="subjectCardLayer"></g>
+
+
+      <!-- =====================================================
+           图层 2：
+           Common Template 白色背景
+           ===================================================== -->
+
+      <rect
+        class="template-box"
+        x="640"
+        y="230"
+        width="320"
+        height="240"
+        rx="16"
+      ></rect>
+
+
+      <!-- =====================================================
+           图层 3：
+           所有映射箭头
+
+           关键：
+           现在箭头在白色背景之上。
+           ===================================================== -->
+
+      <g id="mappingLayer"></g>
+
+
+      <!-- =====================================================
+           图层 4：
+           Common Template 内容
+           ===================================================== -->
+
+      <rect
+        class="template-title-box"
+        x="625"
+        y="200"
+        width="260"
+        height="38"
+        rx="10"
+      ></rect>
+
+      <text
+        class="template-title"
+        x="640"
+        y="226"
+        text-anchor="start"
+      >
+        Common Template
+      </text>
+
+      <g id="templatePanel"></g>
+
+
+      <!-- =====================================================
+           图层 5：
+           Subject 内部图形、标题、公式
+
+           这些内容位于箭头之上，
+           箭头不会覆盖文字或猫。
+           ===================================================== -->
+
+      <g id="subjectsLayer"></g>
+
+    </svg>
+
+  </div>
+
+  <div class="controls">
+    <button id="replayBtn" type="button">Replay</button>
+    <button id="pauseBtn" type="button">Pause</button>
+  </div>
+</div>
+
+
+<script>
+  const svgNS =
+    'http://www.w3.org/2000/svg';
+
+
+  /* ============================================================
+     Images
+     ============================================================ */
+
+  const catImages = [
+    'pic/understand_ha/html/cat1.png',
+    'pic/understand_ha/html/cat2.png',
+    'pic/understand_ha/html/cat3.png'
+  ];
+
+
+  /* ============================================================
+     Animation
+     ============================================================ */
+
+  const STEP_INTERVAL = 1300;
+  const MORPH_DURATION = 700;
+
+
+  /* ============================================================
+     Layout
+
+     八张 Subject 卡片共用同一套尺寸和对齐规则。
+     卡片位置由中心模板的边界、Subject 卡片边界
+     以及统一的 ARROW_GAP 自动计算。
+
+     这一部分只负责页面排版；
+     Subject 内部三角形的 scale、角度和计算都不变。
+     ============================================================ */
+
+  const SUBJECT_CARD_WIDTH = 200;
+  const SUBJECT_CARD_HEIGHT = 130;
+
+  const SUBJECT_HALF_WIDTH =
+    SUBJECT_CARD_WIDTH / 2;
+
+  const SUBJECT_HALF_HEIGHT =
+    SUBJECT_CARD_HEIGHT / 2;
+
+
+  /*
+    Common Template box：
+
+    x = 640
+    y = 230
+    width = 320
+    height = 240
+
+    所以实际中心：
+  */
+  const TEMPLATE_CENTER = {
+    x: 800,
+    y: 350
+  };
+
+  const TEMPLATE_HALF_WIDTH = 160;
+  const TEMPLATE_HALF_HEIGHT = 120;
+
+  const ARROW_GAP = 65;
+
+  const SUBJECT_DIRECTIONS = [
+    90,
+    25,
+    0,
+    -25,
+    -90,
+    -155,
+    180,
+    155
+  ];
+
+
+  function boundaryRadius(
+    angleDeg,
+    halfWidth,
+    halfHeight
+  ) {
+
+    const rad =
+      angleDeg *
+      Math.PI /
+      180;
+
+
+    const xRatio =
+      Math.abs(Math.cos(rad)) < 1e-10
+        ? Infinity
+        : halfWidth / Math.abs(Math.cos(rad));
+
+
+    const yRatio =
+      Math.abs(Math.sin(rad)) < 1e-10
+        ? Infinity
+        : halfHeight / Math.abs(Math.sin(rad));
+
+
+    return Math.min(
+      xRatio,
+      yRatio
+    );
+  }
+
+
+  function subjectPosition(
+    index
+  ) {
+
+    const angle =
+      SUBJECT_DIRECTIONS[index];
+
+
+    const centerDistance =
+      boundaryRadius(
+        angle,
+        TEMPLATE_HALF_WIDTH,
+        TEMPLATE_HALF_HEIGHT
+      ) +
+      boundaryRadius(
+        angle,
+        SUBJECT_HALF_WIDTH,
+        SUBJECT_HALF_HEIGHT
+      ) +
+      ARROW_GAP;
+
+
+    return polarEndpoint(
+      TEMPLATE_CENTER,
+      angle,
+      centerDistance
+    );
+  }
+
+
+  /*
+    将 Vertex1 标签计入整体宽度后进行视觉居中。
+  */
+  const templateGeometryOrigin = {
+    x: 767,
+    y: 365
+  };
+
+
+  /* ============================================================
+     Subjects
+
+     按上、右上、右、右下、下、左下、左、左上排列。
+     每张卡片到 Common Template 的边界间距均为 ARROW_GAP。
+     ============================================================ */
+
+  const subjectData = [
+
+    {
+      name: 'Sub1',
+      color: 'var(--subject-1)',
+      displayAngle: 132,
+
+      position: subjectPosition(0),
+
+      points: [
+        { u: 96,  v: 31 },
+        { u: -54, v: 84 },
+        { u: -87, v: -59 }
+      ]
+    },
+
+
+    {
+      name: 'Sub2',
+      color: 'var(--subject-2)',
+      displayAngle: -59,
+
+      position: subjectPosition(1),
+
+      points: [
+        { u: 61,  v: 69 },
+        { u: -91, v: 43 },
+        { u: -53, v: -92 }
+      ]
+    },
+
+
+    {
+      name: 'Sub3',
+      color: 'var(--subject-3)',
+      displayAngle: 15,
+
+      position: subjectPosition(2),
+
+      points: [
+        { u: 103, v: 60 },
+        { u: -79, v: 77 },
+        { u: -94, v: -40 }
+      ]
+    },
+
+
+    {
+      name: 'Sub4',
+      color: 'var(--subject-4)',
+      displayAngle: 70,
+
+      position: subjectPosition(3),
+
+      points: [
+        { u: 88,  v: 48 },
+        { u: -63, v: 91 },
+        { u: -82, v: -71 }
+      ]
+    },
+
+
+    {
+      name: 'Sub5',
+      color: 'var(--subject-5)',
+      displayAngle: -20,
+
+      position: subjectPosition(4),
+
+      points: [
+        { u: 67,  v: 82 },
+        { u: -84, v: 55 },
+        { u: -59, v: -88 }
+      ]
+    },
+
+
+    {
+      name: 'Sub6',
+      color: 'var(--subject-6)',
+      displayAngle: 105,
+
+      position: subjectPosition(5),
+
+      points: [
+        { u: 110, v: 41 },
+        { u: -70, v: 71 },
+        { u: -95, v: -48 }
+      ]
+    },
+
+
+    {
+      name: 'Sub7',
+      color: 'var(--subject-7)',
+      displayAngle: -125,
+
+      position: subjectPosition(6),
+
+      points: [
+        { u: 82,  v: 55 },
+        { u: -96, v: 62 },
+        { u: -60, v: -76 }
+      ]
+    },
+
+
+    {
+      name: 'Sub8',
+      color: 'var(--subject-8)',
+      displayAngle: 35,
+
+      position: subjectPosition(7),
+
+      points: [
+        { u: 93,  v: 67 },
+        { u: -73, v: 88 },
+        { u: -89, v: -54 }
+      ]
+    }
+
+  ];
+
+
+  /* ============================================================
+     SVG utilities
+     ============================================================ */
+
+  function createSvg(
+    tag,
+    attrs = {}
+  ) {
+
+    const el =
+      document.createElementNS(
+        svgNS,
+        tag
+      );
+
+
+    for (
+      const [key, value]
+      of Object.entries(attrs)
+    ) {
+
+      el.setAttribute(
+        key,
+        value
+      );
+    }
+
+
+    return el;
+  }
+
+
+  function polarEndpoint(
+    origin,
+    angleDeg,
+    length
+  ) {
+
+    const rad =
+      angleDeg *
+      Math.PI /
+      180;
+
+
+    return {
+      x:
+        origin.x +
+        length *
+        Math.cos(rad),
+
+      y:
+        origin.y -
+        length *
+        Math.sin(rad)
+    };
+  }
+
+
+  function pointsAttribute(
+    points
+  ) {
+
+    return points
+      .map(
+        point =>
+          `${point.x},${point.y}`
+      )
+      .join(' ');
+  }
+
+
+  /* ============================================================
+     Geometry utilities
+     ============================================================ */
+
+  function centered(
+    points
+  ) {
+
+    const meanU =
+      points.reduce(
+        (sum, point) =>
+          sum + point.u,
+        0
+      ) /
+      points.length;
+
+
+    const meanV =
+      points.reduce(
+        (sum, point) =>
+          sum + point.v,
+        0
+      ) /
+      points.length;
+
+
+    return points.map(
+      point => ({
+        u:
+          point.u - meanU,
+
+        v:
+          point.v - meanV
+      })
+    );
+  }
+
+
+  /*
+    这里只用于根据原有 Subject 角度
+    得到它已经固定好的 Vertex triangle。
+
+    不会动态修改 Subject。
+  */
+  function rotateMathPoints(
+    points,
+    angleDeg
+  ) {
+
+    const rad =
+      angleDeg *
+      Math.PI /
+      180;
+
+
+    const cosA =
+      Math.cos(rad);
+
+    const sinA =
+      Math.sin(rad);
+
+
+    return points.map(
+      point => ({
+
+        u:
+          point.u * cosA -
+          point.v * sinA,
+
+        v:
+          point.u * sinA +
+          point.v * cosA
+      })
+    );
+  }
+
+
+  function vertexPointToScreen(
+    origin,
+    point,
+    scale
+  ) {
+
+    return {
+      x:
+        origin.x +
+        point.u * scale,
+
+      y:
+        origin.y -
+        point.v * scale
+    };
+  }
+
+
+  /* ============================================================
+     Centroid size
+
+     Common Template 整体尺寸保持不变。
+     ============================================================ */
+
+  function centroidSize(
+    points
+  ) {
+
+    const c =
+      centered(points);
+
+
+    const sumSquares =
+      c.reduce(
+        (
+          sum,
+          point
+        ) =>
+          sum +
+          point.u * point.u +
+          point.v * point.v,
+        0
+      );
+
+
+    return Math.sqrt(
+      sumSquares
+    );
+  }
+
+
+  function normalizeCentroidSize(
+    points,
+    targetSize
+  ) {
+
+    const c =
+      centered(points);
+
+
+    const size =
+      centroidSize(c);
+
+
+    if (
+      size < 1e-10
+    ) {
+      return c;
+    }
+
+
+    const factor =
+      targetSize /
+      size;
+
+
+    return c.map(
+      point => ({
+        u:
+          point.u * factor,
+
+        v:
+          point.v * factor
+      })
+    );
+  }
+
+
+  /* ============================================================
+     Mean
+     ============================================================ */
+
+  function meanPointSets(
+    pointSets
+  ) {
+
+    if (
+      !pointSets.length
+    ) {
+      return [];
+    }
+
+
+    const pointCount =
+      pointSets[0].length;
+
+
+    return Array.from(
+      {
+        length:
+          pointCount
+      },
+
+      (
+        _,
+        pointIndex
+      ) => {
+
+        let sumU = 0;
+        let sumV = 0;
+
+
+        pointSets.forEach(
+          points => {
+
+            sumU +=
+              points[
+                pointIndex
+              ].u;
+
+
+            sumV +=
+              points[
+                pointIndex
+              ].v;
+          }
+        );
+
+
+        return {
+          u:
+            sumU /
+            pointSets.length,
+
+          v:
+            sumV /
+            pointSets.length
+        };
+      }
+    );
+  }
+
+
+  function interpolatePoints(
+    from,
+    to,
+    t
+  ) {
+
+    return from.map(
+      (
+        point,
+        index
+      ) => ({
+
+        u:
+          point.u +
+          (
+            to[index].u -
+            point.u
+          ) * t,
+
+        v:
+          point.v +
+          (
+            to[index].v -
+            point.v
+          ) * t
+      })
+    );
+  }
+
+
+  function easeInOutCubic(
+    t
+  ) {
+
+    return t < 0.5
+
+      ? 4 *
+        t *
+        t *
+        t
+
+      : 1 -
+        Math.pow(
+          -2 * t + 2,
+          3
+        ) /
+        2;
+  }
+
+
+  /* ============================================================
+     固定各 Subject 的 Vertex triangle
+
+     与上一版本一致。
+     ============================================================ */
+
+  subjectData.forEach(
+    subject => {
+
+      const centeredPoints =
+        centered(
+          subject.points
+        );
+
+
+      subject.vertexPoints =
+        rotateMathPoints(
+          centeredPoints,
+          subject.displayAngle
+        );
+    }
+  );
+
+
+  /* ============================================================
+     Common Template 固定尺寸
+
+     与上一版本一致。
+     ============================================================ */
+
+  const COMMON_TEMPLATE_SIZE =
+    centroidSize(
+      subjectData[0].vertexPoints
+    );
+
+
+  /* ============================================================
+     Vertex axes
+     ============================================================ */
+
+  function addAxes(
+    group,
+    origin,
+    {
+      axisLen,
+      template = false
+    }
+  ) {
+
+    const xNeg =
+      polarEndpoint(
+        origin,
+        180,
+        axisLen
+      );
+
+
+    const xPos =
+      polarEndpoint(
+        origin,
+        0,
+        axisLen
+      );
+
+
+    const yNeg =
+      polarEndpoint(
+        origin,
+        -90,
+        axisLen
+      );
+
+
+    const yPos =
+      polarEndpoint(
+        origin,
+        90,
+        axisLen
+      );
+
+
+    group.appendChild(
+      createSvg(
+        'line',
+        {
+          x1:
+            xNeg.x,
+
+          y1:
+            xNeg.y,
+
+          x2:
+            xPos.x,
+
+          y2:
+            xPos.y,
+
+          stroke:
+            'var(--axis)',
+
+          'stroke-width':
+            template
+              ? 2.5
+              : 1.8,
+
+          'marker-end':
+            'url(#arrowAxis)'
+        }
+      )
+    );
+
+
+    group.appendChild(
+      createSvg(
+        'line',
+        {
+          x1:
+            yNeg.x,
+
+          y1:
+            yNeg.y,
+
+          x2:
+            yPos.x,
+
+          y2:
+            yPos.y,
+
+          stroke:
+            'var(--axis)',
+
+          'stroke-width':
+            template
+              ? 2.5
+              : 1.8,
+
+          'marker-end':
+            'url(#arrowAxis)'
+        }
+      )
+    );
+
+
+    const vertex1 =
+      createSvg(
+        'text',
+        {
+          x:
+            xPos.x +
+            (
+              template
+                ? 14
+                : 7
+            ),
+
+          y:
+            xPos.y + 4,
+
+          class:
+            template
+              ? 'template-axis-label'
+              : 'axis-label'
+        }
+      );
+
+
+    vertex1.textContent =
+      'Vertex1';
+
+
+    group.appendChild(
+      vertex1
+    );
+
+
+    const vertex2 =
+      createSvg(
+        'text',
+        {
+          x:
+            yPos.x +
+            (
+              template
+                ? 10
+                : 6
+            ),
+
+          y:
+            yPos.y -
+            (
+              template
+                ? 6
+                : 5
+            ),
+
+          class:
+            template
+              ? 'template-axis-label'
+              : 'axis-label'
+        }
+      );
+
+
+    vertex2.textContent =
+      'Vertex2';
+
+
+    group.appendChild(
+      vertex2
+    );
+
+
+    group.appendChild(
+      createSvg(
+        'circle',
+        {
+          cx:
+            origin.x,
+
+          cy:
+            origin.y,
+
+          r:
+            template
+              ? 4
+              : 3,
+
+          fill:
+            '#374151'
+        }
+      )
+    );
+  }
+
+
+  /* ============================================================
+     Cat images
+     ============================================================ */
+
+  function addPointImages(
+    group,
+    count,
+    imageSize
+  ) {
+
+    return Array.from(
+      {
+        length:
+          count
+      },
+
+      (
+        _,
+        index
+      ) => {
+
+        const image =
+          createSvg(
+            'image',
+            {
+              href:
+                catImages[index],
+
+              width:
+                imageSize,
+
+              height:
+                imageSize,
+
+              preserveAspectRatio:
+                'xMidYMid meet'
+            }
+          );
+
+
+        group.appendChild(
+          image
+        );
+
+
+        return image;
+      }
+    );
+  }
+
+
+  /* ============================================================
+     Build Subject
+
+     这里只修改卡片所属图层和页面位置。
+
+     Subject 三角形：
+       scale = 0.28
+       angle 不变
+       shape 不变
+       size 不变
+     ============================================================ */
+
+  function buildSubject(
+    subject,
+    index
+  ) {
+
+    const subjectCardLayer =
+      document.getElementById(
+        'subjectCardLayer'
+      );
+
+
+    const subjectsLayer =
+      document.getElementById(
+        'subjectsLayer'
+      );
+
+
+    /*
+      卡片背景单独作为一个 group。
+    */
+    const cardGroup =
+      createSvg(
+        'g',
+        {
+          class:
+            'subject-card-node'
+        }
+      );
+
+
+    const card =
+      createSvg(
+        'rect',
+        {
+          x:
+            subject.position.x -
+            SUBJECT_HALF_WIDTH,
+
+          y:
+            subject.position.y -
+            SUBJECT_HALF_HEIGHT,
+
+          width:
+            SUBJECT_CARD_WIDTH,
+
+          height:
+            SUBJECT_CARD_HEIGHT,
+
+          rx: 16,
+
+          class:
+            'subject-card'
+        }
+      );
+
+
+    cardGroup.appendChild(
+      card
+    );
+
+
+    subjectCardLayer.appendChild(
+      cardGroup
+    );
+
+
+    /*
+      Subject 内容单独一个 group。
+
+      它处于 mapping arrows 上方。
+    */
+    const group =
+      createSvg(
+        'g',
+        {
+          class:
+            'subject-node',
+
+          id:
+            `subject-${index}`
+        }
+      );
+
+
+    /* -------------------------
+       Title
+       ------------------------- */
+
+    const titleBox =
+      createSvg(
+        'rect',
+        {
+          x:
+            subject.position.x -
+            SUBJECT_HALF_WIDTH -
+            10,
+
+          y:
+            subject.position.y -
+            SUBJECT_HALF_HEIGHT -
+            13,
+
+          width: 62,
+
+          height: 27,
+
+          rx: 8,
+
+          class:
+            'panel-title-box'
+        }
+      );
+
+
+    group.appendChild(
+      titleBox
+    );
+
+    const title =
+      createSvg(
+        'text',
+        {
+          x:
+            subject.position.x -
+            SUBJECT_HALF_WIDTH +
+            21,
+
+          y:
+            subject.position.y -
+            SUBJECT_HALF_HEIGHT +
+            7,
+
+          class:
+            'panel-title',
+
+          'text-anchor':
+            'middle'
+        }
+      );
+
+
+    title.textContent =
+      subject.name;
+
+
+    group.appendChild(
+      title
+    );
+
+
+    const axesGroup =
+      createSvg('g');
+
+
+    const geometryGroup =
+      createSvg('g');
+
+
+    group.appendChild(
+      axesGroup
+    );
+
+
+    group.appendChild(
+      geometryGroup
+    );
+
+
+    /*
+      将 Vertex1 标签计入整体宽度后进行视觉居中，
+      三角形尺寸和计算不变。
+    */
+    const origin = {
+      x:
+        subject.position.x -
+        23,
+
+      y:
+        subject.position.y +
+        9
+    };
+
+
+    addAxes(
+      axesGroup,
+      origin,
+      {
+        axisLen: 52,
+        template: false
+      }
+    );
+
+
+    /*
+      保持上一版：
+      Subject 三角形显示 scale 不变。
+    */
+    const SUBJECT_DISPLAY_SCALE =
+      0.28;
+
+
+    const screenPoints =
+      subject.vertexPoints.map(
+        point =>
+          vertexPointToScreen(
+            origin,
+            point,
+            SUBJECT_DISPLAY_SCALE
+          )
+      );
+
+
+    const polygon =
+      createSvg(
+        'polygon',
+        {
+          points:
+            pointsAttribute(
+              screenPoints
+            ),
+
+          fill:
+            subject.color,
+
+          stroke:
+            subject.color,
+
+          class:
+            'subject-polygon'
+        }
+      );
+
+
+    polygon.style.fillOpacity =
+      0.07;
+
+
+    geometryGroup.appendChild(
+      polygon
+    );
+
+
+    const imageSize =
+      21;
+
+
+    const images =
+      addPointImages(
+        geometryGroup,
+        subject.vertexPoints.length,
+        imageSize
+      );
+
+
+    images.forEach(
+      (
+        image,
+        pointIndex
+      ) => {
+
+        image.setAttribute(
+          'x',
+
+          screenPoints[
+            pointIndex
+          ].x -
+          imageSize / 2
+        );
+
+
+        image.setAttribute(
+          'y',
+
+          screenPoints[
+            pointIndex
+          ].y -
+          imageSize / 2
+        );
+      }
+    );
+
+
+    subjectsLayer.appendChild(
+      group
+    );
+
+
+    return {
+
+      setActive(
+        active
+      ) {
+
+        group.classList.toggle(
+          'active',
+          active
+        );
+
+
+        cardGroup.classList.toggle(
+          'active',
+          active
+        );
+      }
+    };
+  }
+
+
+  /* ============================================================
+     Rectangle boundary
+
+     找到“中心 -> 目标方向”
+     与矩形边界的交点。
+     ============================================================ */
+
+  function rectangleBoundaryPoint(
+    center,
+    target,
+    halfWidth,
+    halfHeight
+  ) {
+
+    const dx =
+      target.x -
+      center.x;
+
+
+    const dy =
+      target.y -
+      center.y;
+
+
+    const absDx =
+      Math.abs(
+        dx
+      );
+
+
+    const absDy =
+      Math.abs(
+        dy
+      );
+
+
+    let scale;
+
+
+    if (
+      absDx / halfWidth >
+      absDy / halfHeight
+    ) {
+
+      scale =
+        halfWidth /
+        Math.max(
+          absDx,
+          0.0001
+        );
+
+    } else {
+
+      scale =
+        halfHeight /
+        Math.max(
+          absDy,
+          0.0001
+        );
+    }
+
+
+    return {
+      x:
+        center.x +
+        dx * scale,
+
+      y:
+        center.y +
+        dy * scale
+    };
+  }
+
+
+  /* ============================================================
+     Mapping arrows
+
+     每个 Subject 都一定生成一条连接线。
+
+     八条连接线都使用直线。Subject 位置已按
+     ARROW_GAP 计算，因此每条线的可见长度完全相同。
+     ============================================================ */
+
+  function createMappingArrow(
+    subject,
+    index
+  ) {
+
+    const mappingLayer =
+      document.getElementById(
+        'mappingLayer'
+      );
+
+
+    /*
+      Subject 边界交点
+    */
+    const sourceBoundary =
+      rectangleBoundaryPoint(
+        subject.position,
+        TEMPLATE_CENTER,
+        SUBJECT_HALF_WIDTH,
+        SUBJECT_HALF_HEIGHT
+      );
+
+
+    /*
+      Common Template 边界交点
+    */
+    const templateBoundary =
+      rectangleBoundaryPoint(
+        TEMPLATE_CENTER,
+        subject.position,
+        TEMPLATE_HALF_WIDTH,
+        TEMPLATE_HALF_HEIGHT
+      );
+
+
+    const dx =
+      templateBoundary.x -
+      sourceBoundary.x;
+
+
+    const dy =
+      templateBoundary.y -
+      sourceBoundary.y;
+
+
+    const distance =
+      Math.hypot(
+        dx,
+        dy
+      );
+
+
+    const ux =
+      dx /
+      Math.max(
+        distance,
+        0.0001
+      );
+
+
+    const uy =
+      dy /
+      Math.max(
+        distance,
+        0.0001
+      );
+
+
+    /*
+      线条与两侧边框各保留 2px 的呼吸空间。
+    */
+    const start = {
+      x:
+        sourceBoundary.x +
+        ux * 2,
+
+      y:
+        sourceBoundary.y +
+        uy * 2
+    };
+
+
+    /*
+      箭头终点距离 Template 边框 2px。
+
+      marker 箭头头部本身会继续延伸，
+      所以视觉上刚好指向 Template。
+    */
+    const end = {
+      x:
+        templateBoundary.x -
+        ux * 2,
+
+      y:
+        templateBoundary.y -
+        uy * 2
+    };
+
+
+    const pathData =
+      `M${start.x} ${start.y} ` +
+      `L${end.x} ${end.y}`;
+
+
+    const path =
+      createSvg(
+        'path',
+        {
+          d:
+            pathData,
+
+          class:
+            'mapping-arrow'
+        }
+      );
+
+
+    mappingLayer.appendChild(
+      path
+    );
+
+
+    return {
+
+      setActive(
+        active
+      ) {
+
+        path.classList.toggle(
+          'active',
+          active
+        );
+      }
+    };
+  }
+
+
+  /* ============================================================
+     Common Template calculation
+
+     以下逻辑保持上一版不变。
+     ============================================================ */
+
+  function commonTemplateFromSubjects(
+    subjects
+  ) {
+
+    const rawMean =
+      meanPointSets(
+        subjects.map(
+          subject =>
+            subject.vertexPoints
+        )
+      );
+
+
+    return normalizeCentroidSize(
+      rawMean,
+      COMMON_TEMPLATE_SIZE
+    );
+  }
+
+
+  /* ============================================================
+     Common Template panel
+
+     三角形逻辑不修改。
+     ============================================================ */
+
+  function buildTemplatePanel() {
+
+    const group =
+      document.getElementById(
+        'templatePanel'
+      );
+
+
+    const historyGroup =
+      createSvg('g');
+
+
+    const axesGroup =
+      createSvg('g');
+
+
+    const geometryGroup =
+      createSvg('g');
+
+
+    group.appendChild(
+      historyGroup
+    );
+
+
+    group.appendChild(
+      axesGroup
+    );
+
+
+    group.appendChild(
+      geometryGroup
+    );
+
+
+    /* -------------------------
+       Axes
+       ------------------------- */
+
+    addAxes(
+      axesGroup,
+      templateGeometryOrigin,
+      {
+        axisLen: 92,
+        template: true
+      }
+    );
+
+
+    /* -------------------------
+       Previous template
+       ------------------------- */
+
+    const historyPolygon =
+      createSvg(
+        'polygon',
+        {
+          class:
+            'template-history'
+        }
+      );
+
+
+    historyGroup.appendChild(
+      historyPolygon
+    );
+
+
+    /* -------------------------
+       Current template
+       ------------------------- */
+
+    const polygon =
+      createSvg(
+        'polygon',
+        {
+          class:
+            'template-polygon',
+
+          opacity: 0
+        }
+      );
+
+
+    geometryGroup.appendChild(
+      polygon
+    );
+
+
+    const imageSize =
+      38;
+
+
+    const images =
+      addPointImages(
+        geometryGroup,
+        3,
+        imageSize
+      );
+
+
+    images.forEach(
+      image => {
+
+        image.setAttribute(
+          'opacity',
+          0
+        );
+      }
+    );
+
+
+    let currentVertexPoints =
+      null;
+
+
+    let animationFrame =
+      null;
+
+
+    let activeAnimation =
+      null;
+
+
+    /*
+      与上一版完全一致。
+    */
+    const TEMPLATE_DISPLAY_SCALE =
+      0.74;
+
+
+    function toScreen(
+      vertexPoints
+    ) {
+
+      return vertexPoints.map(
+        point =>
+          vertexPointToScreen(
+            templateGeometryOrigin,
+            point,
+            TEMPLATE_DISPLAY_SCALE
+          )
+      );
+    }
+
+
+    /* =========================================================
+       Render
+       ========================================================= */
+
+    function render(
+      vertexPoints
+    ) {
+
+      /*
+        Common Template 尺寸恒定。
+      */
+      const fixedSizeVertex =
+        normalizeCentroidSize(
+          vertexPoints,
+          COMMON_TEMPLATE_SIZE
+        );
+
+
+      const screenPoints =
+        toScreen(
+          fixedSizeVertex
+        );
+
+
+      polygon.setAttribute(
+        'points',
+        pointsAttribute(
+          screenPoints
+        )
+      );
+
+
+      polygon.setAttribute(
+        'opacity',
+        1
+      );
+
+
+      images.forEach(
+        (
+          image,
+          index
+        ) => {
+
+          image.setAttribute(
+            'x',
+
+            screenPoints[
+              index
+            ].x -
+            imageSize / 2
+          );
+
+
+          image.setAttribute(
+            'y',
+
+            screenPoints[
+              index
+            ].y -
+            imageSize / 2
+          );
+
+
+          image.setAttribute(
+            'opacity',
+            1
+          );
+        }
+      );
+
+
+      return fixedSizeVertex;
+    }
+
+
+    /* =========================================================
+       History
+       ========================================================= */
+
+    function showHistory(
+      vertexPoints
+    ) {
+
+      if (
+        !vertexPoints
+      ) {
+        return;
+      }
+
+
+      const normalized =
+        normalizeCentroidSize(
+          vertexPoints,
+          COMMON_TEMPLATE_SIZE
+        );
+
+
+      const screenPoints =
+        toScreen(
+          normalized
+        );
+
+
+      historyPolygon.setAttribute(
+        'points',
+        pointsAttribute(
+          screenPoints
+        )
+      );
+
+
+      historyPolygon.style.transition =
+        'none';
+
+
+      historyPolygon.setAttribute(
+        'opacity',
+        0.85
+      );
+
+
+      requestAnimationFrame(
+        () => {
+
+          historyPolygon.style.transition =
+            `opacity ${MORPH_DURATION}ms ease`;
+
+
+          historyPolygon.setAttribute(
+            'opacity',
+            0
+          );
+        }
+      );
+    }
+
+
+    /* =========================================================
+       Morph
+       ========================================================= */
+
+    function morphTo(
+      targetVertexPoints,
+      duration = MORPH_DURATION
+    ) {
+
+      if (
+        animationFrame
+      ) {
+
+        cancelAnimationFrame(
+          animationFrame
+        );
+      }
+
+
+      activeAnimation =
+        null;
+
+
+      /*
+        第一个 Subject
+      */
+      if (
+        !currentVertexPoints
+      ) {
+
+        currentVertexPoints =
+          normalizeCentroidSize(
+            targetVertexPoints,
+            COMMON_TEMPLATE_SIZE
+          );
+
+
+        render(
+          currentVertexPoints
+        );
+
+
+        return;
+      }
+
+
+      const fromVertex =
+        currentVertexPoints.map(
+          point => ({
+            ...point
+          })
+        );
+
+
+      const normalizedTargetVertex =
+        normalizeCentroidSize(
+          targetVertexPoints,
+          COMMON_TEMPLATE_SIZE
+        );
+
+
+      showHistory(
+        fromVertex
+      );
+
+
+      let startTime =
+        performance.now();
+
+
+      let pausedAt =
+        null;
+
+
+      function animate(
+        now
+      ) {
+
+        const rawT =
+          Math.min(
+            1,
+
+            (
+              now -
+              startTime
+            ) /
+            duration
+          );
+
+
+        const t =
+          easeInOutCubic(
+            rawT
+          );
+
+
+        const rawInterpolatedVertex =
+          interpolatePoints(
+            fromVertex,
+            normalizedTargetVertex,
+            t
+          );
+
+
+        /*
+          动画每一帧都保证尺寸恒定。
+        */
+        const interpolatedVertex =
+          normalizeCentroidSize(
+            rawInterpolatedVertex,
+            COMMON_TEMPLATE_SIZE
+          );
+
+
+        render(
+          interpolatedVertex
+        );
+
+
+        if (
+          rawT < 1
+        ) {
+
+          animationFrame =
+            requestAnimationFrame(
+              animate
+            );
+
+        } else {
+
+          currentVertexPoints =
+            normalizedTargetVertex.map(
+              point => ({
+                ...point
+              })
+            );
+
+
+          animationFrame =
+            null;
+
+
+          activeAnimation =
+            null;
+        }
+      }
+
+
+      activeAnimation = {
+        pause() {
+          if (!animationFrame || pausedAt !== null) {
+            return;
+          }
+
+          pausedAt = performance.now();
+          cancelAnimationFrame(animationFrame);
+          animationFrame = null;
+        },
+
+        resume() {
+          if (pausedAt === null) {
+            return;
+          }
+
+          startTime += performance.now() - pausedAt;
+          pausedAt = null;
+          animationFrame = requestAnimationFrame(animate);
+        }
+      };
+
+
+      animationFrame =
+        requestAnimationFrame(
+          animate
+        );
+    }
+
+
+    function reset() {
+
+      if (
+        animationFrame
+      ) {
+
+        cancelAnimationFrame(
+          animationFrame
+        );
+
+
+        animationFrame =
+          null;
+      }
+
+
+      currentVertexPoints =
+        null;
+
+
+      activeAnimation =
+        null;
+
+
+      polygon.setAttribute(
+        'opacity',
+        0
+      );
+
+
+      polygon.removeAttribute(
+        'points'
+      );
+
+
+      historyPolygon.setAttribute(
+        'opacity',
+        0
+      );
+
+
+      images.forEach(
+        image => {
+
+          image.setAttribute(
+            'opacity',
+            0
+          );
+        }
+      );
+
+
+    }
+
+
+    return {
+      morphTo,
+      reset,
+      pause() {
+        if (activeAnimation) {
+          activeAnimation.pause();
+        }
+      },
+      resume() {
+        if (activeAnimation) {
+          activeAnimation.resume();
+        }
+      }
+    };
+  }
+
+
+  /* ============================================================
+     Build everything
+     ============================================================ */
+
+  const subjectPanels =
+    subjectData.map(
+      buildSubject
+    );
+
+
+  /*
+    所有 Subject 构建完成后，
+    再生成 8 条箭头。
+  */
+  const mappingArrows =
+    subjectData.map(
+      createMappingArrow
+    );
+
+
+  const templatePanel =
+    buildTemplatePanel();
+
+
+  /* ============================================================
+     Animation sequence
+     ============================================================ */
+
+  let currentSubjectIndex =
+    0;
+
+
+  let sequenceTimer =
+    null;
+
+
+  let scheduledAction =
+    null;
+
+
+  let remainingDelay =
+    0;
+
+
+  let timerStartedAt =
+    0;
+
+
+  let paused =
+    false;
+
+
+  function scheduleAction(
+    action,
+    delay
+  ) {
+    scheduledAction = action;
+    remainingDelay = delay;
+    timerStartedAt = performance.now();
+
+    sequenceTimer = setTimeout(
+      () => {
+        sequenceTimer = null;
+        scheduledAction = null;
+        action();
+      },
+      delay
+    );
+  }
+
+
+  function activateSubject(
+    index
+  ) {
+
+    subjectPanels[
+      index
+    ].setActive(
+      true
+    );
+
+
+    mappingArrows[
+      index
+    ].setActive(
+      true
+    );
+
+
+    const includedSubjects =
+      subjectData.slice(
+        0,
+        index + 1
+      );
+
+
+    const commonVertex =
+      commonTemplateFromSubjects(
+        includedSubjects
+      );
+
+
+    templatePanel.morphTo(
+      commonVertex
+    );
+  }
+
+
+  function nextSubject() {
+
+    if (
+      currentSubjectIndex <
+      subjectData.length
+    ) {
+
+      activateSubject(
+        currentSubjectIndex
+      );
+
+
+      currentSubjectIndex++;
+
+
+      if (
+        currentSubjectIndex <
+        subjectData.length
+      ) {
+        scheduleAction(
+          nextSubject,
+          STEP_INTERVAL
+        );
+      }
+
+    }
+  }
+
+
+  function replaySequence() {
+    if (sequenceTimer) {
+      clearTimeout(sequenceTimer);
+      sequenceTimer = null;
+    }
+
+    subjectPanels.forEach(panel => panel.setActive(false));
+    mappingArrows.forEach(arrow => arrow.setActive(false));
+    templatePanel.reset();
+
+    currentSubjectIndex = 0;
+    scheduledAction = null;
+    paused = false;
+    document.getElementById('pauseBtn').textContent = 'Pause';
+
+    document.getAnimations().forEach(animation => animation.play());
+    scheduleAction(nextSubject, 700);
+  }
+
+
+  function togglePause() {
+    const pauseButton = document.getElementById('pauseBtn');
+
+    if (paused) {
+      paused = false;
+      pauseButton.textContent = 'Pause';
+      document.getAnimations().forEach(animation => animation.play());
+      templatePanel.resume();
+
+      if (scheduledAction) {
+        scheduleAction(scheduledAction, remainingDelay);
+      }
+
+      return;
+    }
+
+    paused = true;
+    pauseButton.textContent = 'Resume';
+
+    if (sequenceTimer) {
+      remainingDelay = Math.max(
+        0,
+        remainingDelay - (performance.now() - timerStartedAt)
+      );
+      clearTimeout(sequenceTimer);
+      sequenceTimer = null;
+    }
+
+    document.getAnimations().forEach(animation => animation.pause());
+    templatePanel.pause();
+  }
+
+
+  /* ============================================================
+     Start
+     ============================================================ */
+
+  document.getElementById('replayBtn').addEventListener(
+    'click',
+    replaySequence
+  );
+
+  document.getElementById('pauseBtn').addEventListener(
+    'click',
+    togglePause
+  );
+
+  replaySequence();
+
+</script>
+
+</body>
+</html>
