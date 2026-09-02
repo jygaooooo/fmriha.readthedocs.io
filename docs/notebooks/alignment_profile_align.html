@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Subjects Aligning to a Fixed Common Template</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --text: #202838;
+      --muted: #667085;
+      --axis: #25282d;
+      --feature: #596579;
+      --panel-border: #d8deea;
+      --template: #7c6db0;
+      --template-light: #d9d3ec;
+      --subject-1: #e69f57;
+      --subject-2: #4f9da6;
+      --subject-3: #d66b8a;
+      --subject-4: #6f9e6e;
+      --subject-5: #c78f52;
+      --subject-6: #6f86c4;
+      --subject-7: #a774b5;
+      --subject-8: #5c9c8b;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      width: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      padding: 10px;
+    }
+
+    .wrap { width: min(1400px, 98vw); }
+
+    .canvas-card {
+      border: 1px solid var(--panel-border);
+      border-radius: 18px;
+      padding: 8px;
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+    }
+
+    svg {
+      display: block;
+      width: 100%;
+      height: auto;
+      overflow: visible;
+    }
+
+    .subject-card, .template-box {
+      fill: rgba(255,255,255,.98);
+      stroke: var(--panel-border);
+      stroke-width: 1.5;
+      filter: url(#cardShadow);
+    }
+
+    .template-box {
+      stroke: #303849;
+      stroke-width: 2;
+      filter: url(#templateShadow);
+    }
+
+    .subject-card-node, .subject-node {
+      opacity: .23;
+      transition: opacity .5s ease;
+    }
+
+    .subject-card-node.active, .subject-node.active { opacity: 1; }
+
+    .panel-title, .template-title {
+      fill: var(--text);
+      font-weight: 700;
+    }
+
+    .panel-title { font-size: 24px; }
+    .template-title { font-size: 31px; }
+
+    .panel-title-box {
+      fill: #f5f7fa;
+      stroke: #cfd6e2;
+      stroke-width: 1;
+    }
+
+    .template-title-box {
+      fill: #f3f0fa;
+      stroke: var(--template-light);
+      stroke-width: 1.3;
+    }
+
+    .axis-label {
+      fill: var(--axis);
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .feature-label {
+      fill: var(--feature);
+      font-size: 17px;
+      font-weight: 700;
+      paint-order: stroke;
+      stroke: white;
+      stroke-width: 3px;
+      stroke-linejoin: round;
+    }
+
+    .formula {
+      fill: #354052;
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .theta {
+      fill: var(--text);
+      font-size: 21px;
+      font-weight: 700;
+    }
+
+    .mapping-arrow {
+      fill: none;
+      stroke: var(--template);
+      stroke-width: 2.2;
+      opacity: .13;
+      transition: opacity .5s ease;
+      marker-end: url(#arrowToTemplate);
+    }
+
+    .mapping-arrow.active { opacity: .78; }
+
+    .subject-polygon {
+      stroke-width: 2.4;
+      stroke-linejoin: round;
+      fill-opacity: .08;
+    }
+
+    .template-polygon {
+      fill: rgba(124,109,176,.08);
+      stroke: var(--template);
+      stroke-width: 3.5;
+      stroke-linejoin: round;
+    }
+
+    .template-history {
+      fill: none;
+      stroke: var(--template-light);
+      stroke-width: 2.5;
+      stroke-dasharray: 8 7;
+      opacity: 0;
+    }
+
+    .template-formula {
+      fill: #354052;
+      font-size: 19px;
+      font-weight: 600;
+    }
+
+    .template-theta {
+      fill: var(--text);
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .controls button {
+      min-width: 92px;
+      padding: 8px 18px;
+      border: 1px solid #cbd3df;
+      border-radius: 9px;
+      background: white;
+      color: var(--text);
+      font: 14px Arial, Helvetica, sans-serif;
+      cursor: pointer;
+      box-shadow: 0 2px 7px rgba(32,40,56,.08);
+    }
+
+    .controls button:hover { background: #f7f8fb; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="canvas-card">
+      <svg viewBox="0 0 1800 1200" preserveAspectRatio="xMidYMid meet"
+        aria-label="Subject feature profiles rotating toward a fixed common template">
+        <defs>
+          <filter id="cardShadow" x="-18%" y="-18%" width="136%" height="145%">
+            <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#344054" flood-opacity=".08" />
+          </filter>
+          <filter id="templateShadow" x="-12%" y="-16%" width="124%" height="140%">
+            <feDropShadow dx="0" dy="7" stdDeviation="9" flood-color="#344054" flood-opacity=".12" />
+          </filter>
+          <marker id="arrowAxis" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L0,6 L8,3 z" fill="#25282d" />
+          </marker>
+          <marker id="arrowFeature" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L0,6 L8,3 z" fill="#596579" />
+          </marker>
+          <marker id="arrowToTemplate" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L0,8 L8,4 z" fill="#7c6db0" />
+          </marker>
+        </defs>
+
+        <g id="subjectCardLayer"></g>
+        <rect class="template-box" x="650" y="405" width="500" height="390" rx="20" />
+        <g id="mappingLayer"></g>
+        <rect class="template-title-box" x="716" y="367" width="368" height="50" rx="12" />
+        <text class="template-title" x="900" y="402" text-anchor="middle">Common Template</text>
+        <g id="templatePanel"></g>
+        <g id="subjectsLayer"></g>
+      </svg>
+    </div>
+    <div class="controls">
+      <button id="replayBtn" type="button">Replay</button>
+      <button id="pauseBtn" type="button">Pause</button>
+    </div>
+  </div>
+
+  <script>
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const START_HOLD = 700;
+    const ROTATION_DURATION = 3400;
+    const CARD_WIDTH = 430;
+    const CARD_HEIGHT = 290;
+    const TEMPLATE_CENTER = { x: 900, y: 600 };
+    const TEMPLATE_HALF = { x: 250, y: 195 };
+    const catImages = [
+      'pic/understand_ha/html/cat1.png',
+      'pic/understand_ha/html/cat2.png',
+      'pic/understand_ha/html/cat3.png'
+    ];
+
+    const subjectData = [
+      { name: 'Sub1', color: 'var(--subject-1)', angle: 132, position: {x: 900, y: 180}, points: [{u:96,v:31},{u:-54,v:84},{u:-87,v:-59}] },
+      { name: 'Sub2', color: 'var(--subject-2)', angle: -59, position: {x: 1570, y: 180}, points: [{u:61,v:69},{u:-91,v:43},{u:-53,v:-92}] },
+      { name: 'Sub3', color: 'var(--subject-3)', angle: 15, position: {x: 1570, y: 600}, points: [{u:103,v:60},{u:-79,v:77},{u:-94,v:-40}] },
+      { name: 'Sub4', color: 'var(--subject-4)', angle: 70, position: {x: 1570, y: 1020}, points: [{u:88,v:48},{u:-63,v:91},{u:-82,v:-71}] },
+      { name: 'Sub5', color: 'var(--subject-5)', angle: -20, position: {x: 900, y: 1020}, points: [{u:67,v:82},{u:-84,v:55},{u:-59,v:-88}] },
+      { name: 'Sub6', color: 'var(--subject-6)', angle: 105, position: {x: 230, y: 1020}, points: [{u:110,v:41},{u:-70,v:71},{u:-95,v:-48}] },
+      { name: 'Sub7', color: 'var(--subject-7)', angle: -125, position: {x: 230, y: 600}, points: [{u:82,v:55},{u:-96,v:62},{u:-60,v:-76}] },
+      { name: 'Sub8', color: 'var(--subject-8)', angle: 35, position: {x: 230, y: 180}, points: [{u:93,v:67},{u:-73,v:88},{u:-89,v:-54}] }
+    ];
+
+    function svg(tag, attrs = {}) {
+      const element = document.createElementNS(svgNS, tag);
+      Object.entries(attrs).forEach(([key, value]) => element.setAttribute(key, value));
+      return element;
+    }
+
+    function centered(points) {
+      const meanU = points.reduce((sum, p) => sum + p.u, 0) / points.length;
+      const meanV = points.reduce((sum, p) => sum + p.v, 0) / points.length;
+      return points.map(p => ({ u: p.u - meanU, v: p.v - meanV }));
+    }
+
+    function rotate(points, angle) {
+      const radians = angle * Math.PI / 180;
+      const cos = Math.cos(radians);
+      const sin = Math.sin(radians);
+      return points.map(p => ({ u: p.u * cos - p.v * sin, v: p.u * sin + p.v * cos }));
+    }
+
+    function centroidSize(points) {
+      return Math.sqrt(centered(points).reduce((sum, p) => sum + p.u*p.u + p.v*p.v, 0));
+    }
+
+    function normalized(points, targetSize) {
+      const c = centered(points);
+      const factor = targetSize / centroidSize(c);
+      return c.map(p => ({ u: p.u * factor, v: p.v * factor }));
+    }
+
+    function meanPointSets(sets) {
+      return sets[0].map((_, i) => ({
+        u: sets.reduce((sum, points) => sum + points[i].u, 0) / sets.length,
+        v: sets.reduce((sum, points) => sum + points[i].v, 0) / sets.length
+      }));
+    }
+
+    function interpolate(from, to, t) {
+      return from.map((p, i) => ({ u: p.u + (to[i].u-p.u)*t, v: p.v + (to[i].v-p.v)*t }));
+    }
+
+    function optimalRotationAngle(fromPoints, toPoints) {
+      const from = centered(fromPoints);
+      const to = centered(toPoints);
+      let dot = 0;
+      let cross = 0;
+      from.forEach((point,index) => {
+        dot += point.u*to[index].u + point.v*to[index].v;
+        cross += point.u*to[index].v - point.v*to[index].u;
+      });
+      return Math.atan2(cross,dot)*180/Math.PI;
+    }
+
+    function polar(origin, angle, length) {
+      const radians = angle * Math.PI / 180;
+      return { x: origin.x + length*Math.cos(radians), y: origin.y - length*Math.sin(radians) };
+    }
+
+    function screenPoint(origin, point, scale) {
+      return { x: origin.x + point.u*scale, y: origin.y - point.v*scale };
+    }
+
+    function pointString(points) { return points.map(p => `${p.x},${p.y}`).join(' '); }
+    function ease(t) { return t < .5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2; }
+
+    subjectData.forEach(subject => {
+      subject.vertexPoints = rotate(centered(subject.points), subject.angle);
+    });
+    const TEMPLATE_SIZE = centroidSize(subjectData[0].vertexPoints);
+    const FINAL_COMMON_TEMPLATE = normalized(
+      meanPointSets(subjectData.map(subject => subject.vertexPoints)),
+      TEMPLATE_SIZE
+    );
+    const angleVector = subjectData.reduce((sum,subject) => {
+      const radians=subject.angle*Math.PI/180;
+      return {sin:sum.sin+Math.sin(radians),cos:sum.cos+Math.cos(radians)};
+    },{sin:0,cos:0});
+    const FINAL_COMMON_ANGLE = Math.atan2(angleVector.sin,angleVector.cos)*180/Math.PI;
+
+    function addVertexAxes(group, origin, length, template = false) {
+      const xNeg = polar(origin, 180, length);
+      const xPos = polar(origin, 0, length);
+      const yNeg = polar(origin, -90, length);
+      const yPos = polar(origin, 90, length);
+      const width = template ? 2.7 : 1.8;
+      group.appendChild(svg('line', {x1:xNeg.x,y1:xNeg.y,x2:xPos.x,y2:xPos.y,stroke:'var(--axis)','stroke-width':width,'marker-end':'url(#arrowAxis)'}));
+      group.appendChild(svg('line', {x1:yNeg.x,y1:yNeg.y,x2:yPos.x,y2:yPos.y,stroke:'var(--axis)','stroke-width':width,'marker-end':'url(#arrowAxis)'}));
+      const v1 = svg('text', {x:xPos.x+8,y:xPos.y+4,class:'axis-label'}); v1.textContent = 'Vertex1';
+      const v2 = svg('text', {x:yPos.x+7,y:yPos.y-5,class:'axis-label'}); v2.textContent = 'Vertex2';
+      group.append(v1, v2, svg('circle', {cx:origin.x,cy:origin.y,r:template?4:3,fill:'#374151'}));
+    }
+
+    function addFeatureAxes(group, origin, angle, length) {
+      const firstAxis = svg('line', {stroke:'var(--feature)','stroke-width':2,'stroke-dasharray':'6 5','marker-end':'url(#arrowFeature)'});
+      const secondAxis = svg('line', {stroke:'var(--feature)','stroke-width':2,'stroke-dasharray':'6 5','marker-end':'url(#arrowFeature)'});
+      const firstLabel = svg('text', {class:'feature-label'});
+      const secondLabel = svg('text', {class:'feature-label'});
+      firstLabel.textContent = 'Fur color';
+      secondLabel.textContent = 'Body size';
+      group.append(firstAxis, secondAxis, firstLabel, secondLabel);
+
+      function update(nextAngle) {
+        const firstNeg = polar(origin, nextAngle+180, length);
+        const firstPos = polar(origin, nextAngle, length);
+        const secondNeg = polar(origin, nextAngle-90, length);
+        const secondPos = polar(origin, nextAngle+90, length);
+        firstAxis.setAttribute('x1',firstNeg.x); firstAxis.setAttribute('y1',firstNeg.y);
+        firstAxis.setAttribute('x2',firstPos.x); firstAxis.setAttribute('y2',firstPos.y);
+        secondAxis.setAttribute('x1',secondNeg.x); secondAxis.setAttribute('y1',secondNeg.y);
+        secondAxis.setAttribute('x2',secondPos.x); secondAxis.setAttribute('y2',secondPos.y);
+        firstLabel.setAttribute('x',firstPos.x+7); firstLabel.setAttribute('y',firstPos.y-7);
+        firstLabel.setAttribute('text-anchor',Math.cos(nextAngle*Math.PI/180)<0?'end':'start');
+        secondLabel.setAttribute('x',secondPos.x+7); secondLabel.setAttribute('y',secondPos.y-7);
+        secondLabel.setAttribute('text-anchor',Math.cos((nextAngle+90)*Math.PI/180)<0?'end':'start');
+      }
+
+      update(angle);
+      return { update };
+    }
+
+    function formulaText(angle) {
+      const radians = angle * Math.PI / 180;
+      const cos = Math.cos(radians);
+      const sin = Math.sin(radians);
+      const pct = value => `${Math.round(Math.abs(value)*100)}%`;
+      const signedFirst = (value, label) => `${value < 0 ? '−' : ''}${pct(value)} ${label}`;
+      const signedTerm = (value, label) => `${value >= 0 ? '+' : '−'} ${pct(value)} ${label}`;
+      return {
+        line1: `Vertex1 = ${signedFirst(cos, 'Fur color')} ${signedTerm(-sin, 'Body size')}`,
+        line2: `Vertex2 = ${signedFirst(sin, 'Fur color')} ${signedTerm(cos, 'Body size')}`,
+        theta: `θ = ${angle.toFixed(1)}°`
+      };
+    }
+
+    function addFormula(group, subject) {
+      const x = subject.position.x;
+      const y = subject.position.y + 80;
+      const line1 = svg('text', {x,y,class:'formula','text-anchor':'middle'});
+      const line2 = svg('text', {x,y:y+25,class:'formula','text-anchor':'middle'});
+      const theta = svg('text', {x,y:y+54,class:'theta','text-anchor':'middle'});
+      group.append(line1, line2, theta);
+      function update(angle) {
+        const text = formulaText(angle);
+        line1.textContent = text.line1;
+        line2.textContent = text.line2;
+        theta.textContent = text.theta;
+      }
+      update(subject.angle);
+      return { update };
+    }
+
+    function addDynamicTemplateFormula(group) {
+      const line1 = svg('text', {x:900,y:729,class:'template-formula','text-anchor':'middle'});
+      const line2 = svg('text', {x:900,y:754,class:'template-formula','text-anchor':'middle'});
+      const theta = svg('text', {x:900,y:782,class:'template-theta','text-anchor':'middle'});
+      group.append(line1,line2,theta);
+      return {
+        update(angle) {
+          const text = formulaText(angle);
+          line1.textContent = text.line1;
+          line2.textContent = text.line2;
+          theta.textContent = text.theta;
+        }
+      };
+    }
+
+    function addCats(group, points, size) {
+      points.forEach((point, index) => group.appendChild(svg('image', {
+        href:catImages[index], x:point.x-size/2, y:point.y-size/2,
+        width:size, height:size, preserveAspectRatio:'xMidYMid meet'
+      })));
+    }
+
+    function buildSubject(subject, index) {
+      const cardLayer = document.getElementById('subjectCardLayer');
+      const contentLayer = document.getElementById('subjectsLayer');
+      const cardGroup = svg('g', {class:'subject-card-node'});
+      cardGroup.appendChild(svg('rect', {x:subject.position.x-CARD_WIDTH/2,y:subject.position.y-CARD_HEIGHT/2,width:CARD_WIDTH,height:CARD_HEIGHT,rx:16,class:'subject-card'}));
+      cardLayer.appendChild(cardGroup);
+
+      const group = svg('g', {class:'subject-node',id:`subject-${index+1}`});
+      group.appendChild(svg('rect', {x:subject.position.x-CARD_WIDTH/2-8,y:subject.position.y-CARD_HEIGHT/2-12,width:66,height:29,rx:8,class:'panel-title-box'}));
+      const title = svg('text', {x:subject.position.x-CARD_WIDTH/2+25,y:subject.position.y-CARD_HEIGHT/2+9,class:'panel-title','text-anchor':'middle'});
+      title.textContent = subject.name;
+      group.appendChild(title);
+
+      const origin = {x:subject.position.x-20,y:subject.position.y-40};
+      addVertexAxes(group, origin, 72);
+      const featureAxes = addFeatureAxes(group, origin, subject.angle, 82);
+      const points = subject.vertexPoints.map(point => screenPoint(origin, point, .38));
+      const polygon = svg('polygon', {points:pointString(points),fill:subject.color,stroke:subject.color,class:'subject-polygon'});
+      group.appendChild(polygon);
+      const imageGroup = svg('g');
+      group.appendChild(imageGroup);
+      addCats(imageGroup, points, 29);
+      const images = Array.from(imageGroup.children);
+      const formula = addFormula(group, subject);
+      contentLayer.appendChild(group);
+
+      const alignmentAngle = optimalRotationAngle(subject.vertexPoints,FINAL_COMMON_TEMPLATE);
+      let frame = null;
+      let animation = null;
+
+      function renderRotation(rotationAngle) {
+        const rotatedPoints = rotate(subject.vertexPoints,rotationAngle);
+        const screenPoints = rotatedPoints.map(point => screenPoint(origin,point,.38));
+        polygon.setAttribute('points',pointString(screenPoints));
+        images.forEach((image,pointIndex) => {
+          image.setAttribute('x',screenPoints[pointIndex].x-14.5);
+          image.setAttribute('y',screenPoints[pointIndex].y-14.5);
+        });
+        const profileAngle = subject.angle+rotationAngle;
+        featureAxes.update(profileAngle);
+        formula.update(profileAngle);
+      }
+
+      function rotateToTemplate(duration=ROTATION_DURATION) {
+        if(frame) cancelAnimationFrame(frame);
+        let start=performance.now();
+        let pausedAt=null;
+        function animate(now) {
+          const raw=Math.min(1,(now-start)/duration);
+          renderRotation(alignmentAngle*ease(raw));
+          if(raw<1) frame=requestAnimationFrame(animate);
+          else {frame=null;animation=null;}
+        }
+        animation={
+          pause() {if(!frame || pausedAt!==null) return;pausedAt=performance.now();cancelAnimationFrame(frame);frame=null;},
+          resume() {if(pausedAt===null) return;start+=performance.now()-pausedAt;pausedAt=null;frame=requestAnimationFrame(animate);}
+        };
+        frame=requestAnimationFrame(animate);
+      }
+
+      return {
+        setActive(active) {cardGroup.classList.toggle('active',active);group.classList.toggle('active',active);},
+        rotateToTemplate,
+        resetRotation() {if(frame) cancelAnimationFrame(frame);frame=null;animation=null;renderRotation(0);},
+        pause() {animation?.pause();},
+        resume() {animation?.resume();}
+      };
+    }
+
+    function rectangleBoundary(center, target, halfWidth, halfHeight) {
+      const dx = target.x-center.x;
+      const dy = target.y-center.y;
+      const scale = Math.min(halfWidth/Math.max(Math.abs(dx),.0001), halfHeight/Math.max(Math.abs(dy),.0001));
+      return {x:center.x+dx*scale,y:center.y+dy*scale};
+    }
+
+    function buildArrow(subject) {
+      const startBoundary = rectangleBoundary(subject.position,TEMPLATE_CENTER,CARD_WIDTH/2,CARD_HEIGHT/2);
+      const endBoundary = rectangleBoundary(TEMPLATE_CENTER,subject.position,TEMPLATE_HALF.x,TEMPLATE_HALF.y);
+      const distance = Math.hypot(endBoundary.x-startBoundary.x,endBoundary.y-startBoundary.y);
+      const ux = (endBoundary.x-startBoundary.x)/distance;
+      const uy = (endBoundary.y-startBoundary.y)/distance;
+      const path = svg('path', {d:`M${startBoundary.x+ux*3} ${startBoundary.y+uy*3} L${endBoundary.x-ux*4} ${endBoundary.y-uy*4}`,class:'mapping-arrow'});
+      document.getElementById('mappingLayer').appendChild(path);
+      return { setActive(active) { path.classList.toggle('active',active); } };
+    }
+
+    function buildTemplate() {
+      const group = document.getElementById('templatePanel');
+      const origin = {x:880,y:570};
+      addVertexAxes(group,origin,135,true);
+      const profile = svg('g');
+      addFeatureAxes(profile,origin,FINAL_COMMON_ANGLE,148);
+      const formula = addDynamicTemplateFormula(profile);
+      formula.update(FINAL_COMMON_ANGLE);
+      group.appendChild(profile);
+      const polygon = svg('polygon',{class:'template-polygon'});
+      const geometry = svg('g');
+      geometry.appendChild(polygon);
+      group.appendChild(geometry);
+      const toScreen = points => points.map(point => screenPoint(origin,point,.88));
+      const screen = toScreen(FINAL_COMMON_TEMPLATE);
+      polygon.setAttribute('points',pointString(screen));
+      addCats(geometry,screen,48);
+    }
+
+    const panels = subjectData.map(buildSubject);
+    const arrows = subjectData.map(buildArrow);
+    buildTemplate();
+    let timer=null;
+    let scheduled=null;
+    let remaining=0;
+    let timerStart=0;
+    let paused=false;
+
+    function schedule(action,delay) {
+      scheduled=action; remaining=delay; timerStart=performance.now();
+      timer=setTimeout(() => {timer=null;scheduled=null;action();},delay);
+    }
+
+    function rotateAllSubjects() {
+      panels.forEach(panel=>panel.rotateToTemplate());
+    }
+
+    function replay() {
+      if(timer) clearTimeout(timer);
+      panels.forEach(panel=>{panel.resetRotation();panel.setActive(true);});
+      arrows.forEach(arrow=>arrow.setActive(true));
+      scheduled=null; paused=false;
+      document.getElementById('pauseBtn').textContent='Pause';
+      document.getAnimations().forEach(animation=>animation.play());
+      schedule(rotateAllSubjects,START_HOLD);
+    }
+
+    function togglePause() {
+      const button=document.getElementById('pauseBtn');
+      if(paused) {
+        paused=false; button.textContent='Pause'; document.getAnimations().forEach(animation=>animation.play()); panels.forEach(panel=>panel.resume());
+        if(scheduled) schedule(scheduled,remaining);
+      } else {
+        paused=true; button.textContent='Resume';
+        if(timer) {remaining=Math.max(0,remaining-(performance.now()-timerStart));clearTimeout(timer);timer=null;}
+        document.getAnimations().forEach(animation=>animation.pause()); panels.forEach(panel=>panel.pause());
+      }
+    }
+
+    document.getElementById('replayBtn').addEventListener('click',replay);
+    document.getElementById('pauseBtn').addEventListener('click',togglePause);
+    replay();
+  </script>
+</body>
+</html>

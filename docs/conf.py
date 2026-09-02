@@ -72,11 +72,12 @@ def _copy_understand_ha_assets(app, exception):
     output_notebooks.mkdir(parents=True, exist_ok=True)
 
     for name in [
-        "single_stimuli.html",
-        "multi_stimuli.html",
-        "cspace.html",
+        "single_stimuli_profile_alignment.html",
+        "multi_stimuli_profile_alignment.html",
+        "cspace_construct_profile_align.html",
         "2sub_pattern_align.html",
         "cspace_construct_pattern_align.html",
+        "alignment_profile_align.html",
         "alignment_pattern_align.html",
     ]:
         shutil.copy2(source_notebooks / name, output_notebooks / name)
