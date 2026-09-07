@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Subjects Aligning to a Fixed Common Template</title>
+  <title>Dynamic Common Template</title>
 
   <style>
     :root {
@@ -44,22 +44,22 @@
       display: flex;
       justify-content: center;
       align-items: flex-start;
-      min-height: 0;
-      padding: 10px;
     }
 
     /*
       整体比例 16:7
     */
     .wrap {
-      width: min(1000px, 96vw);
+      width: 100vw;
+      aspect-ratio: 16 / 7;
     }
 
     .canvas-card {
-      border: 1px solid var(--panel-border);
-      border-radius: 18px;
-      padding: 10px;
-      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+      width: 100%;
+      height: 100%;
+      background: #ffffff;
+      border: 1px solid #e3e7ef;
+      overflow: hidden;
     }
 
     .controls {
@@ -90,8 +90,7 @@
     svg {
       display: block;
       width: 100%;
-      height: auto;
-      overflow: visible;
+      height: 100%;
     }
 
     /*
@@ -117,7 +116,7 @@
     */
     .subject-card-node,
     .subject-node {
-      opacity: 0.24;
+      opacity: 1;
       transition: opacity 0.5s ease;
     }
 
@@ -128,39 +127,27 @@
 
     .panel-title {
       fill: var(--text);
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 700;
       letter-spacing: 0.15px;
     }
 
-    .panel-title-box {
-      fill: #f5f7fa;
-      stroke: #cfd6e2;
-      stroke-width: 1;
-    }
-
     .template-title {
       fill: var(--text);
-      font-size: 24px;
+      font-size: 22px;
       font-weight: 700;
       letter-spacing: 0.2px;
     }
 
-    .template-title-box {
-      fill: #f3f0fa;
-      stroke: var(--template-light);
-      stroke-width: 1.2;
-    }
-
     .axis-label {
       fill: var(--axis);
-      font-size: 12.5px;
+      font-size: 10.5px;
       font-weight: 700;
     }
 
     .template-axis-label {
       fill: var(--axis);
-      font-size: 16px;
+      font-size: 14px;
       font-weight: 700;
     }
 
@@ -214,9 +201,9 @@
   <div class="canvas-card">
 
     <svg
-      viewBox="350 0 900 700"
+      viewBox="0 0 1600 700"
       preserveAspectRatio="xMidYMid meet"
-      aria-label="Subjects rotating toward a fixed common template"
+      aria-label="Subjects dynamically forming a common template"
     >
 
       <defs>
@@ -316,20 +303,11 @@
            Common Template 内容
            ===================================================== -->
 
-      <rect
-        class="template-title-box"
-        x="625"
-        y="200"
-        width="260"
-        height="38"
-        rx="10"
-      ></rect>
-
       <text
         class="template-title"
-        x="640"
-        y="226"
-        text-anchor="start"
+        x="800"
+        y="268"
+        text-anchor="middle"
       >
         Common Template
       </text>
@@ -370,7 +348,7 @@
   const catImages = [
     'pic/understand_ha/html/cat1.png',
     'pic/understand_ha/html/cat2.png',
-    'pic/understand_ha/html/cat3.png'
+    'pic/understand_ha/html/dog.png'
   ];
 
 
@@ -378,9 +356,10 @@
      Animation
      ============================================================ */
 
-  const START_HOLD = 700;
-  const ROTATION_DURATION = 4000;
-  const MORPH_DURATION = 700;
+  const STEP_INTERVAL = 1300;
+  const MORPH_DURATION = 3000;
+  const FINAL_HOLD = 2500;
+  const RESET_HOLD = 700;
 
 
   /* ============================================================
@@ -502,7 +481,7 @@
   */
   const templateGeometryOrigin = {
     x: 767,
-    y: 365
+    y: 373
   };
 
 
@@ -785,31 +764,43 @@
   }
 
 
-  function optimalRotationAngle(
+  function rotationToTemplate(
     sourcePoints,
-    targetPoints
+    templatePoints
   ) {
-    let cosineTerm = 0;
-    let sineTerm = 0;
 
-    sourcePoints.forEach(
-      (sourcePoint, index) => {
-        const targetPoint =
-          targetPoints[index];
+    const source =
+      centered(sourcePoints);
 
-        cosineTerm +=
-          targetPoint.u * sourcePoint.u +
-          targetPoint.v * sourcePoint.v;
 
-        sineTerm +=
-          targetPoint.v * sourcePoint.u -
-          targetPoint.u * sourcePoint.v;
-      }
-    );
+    const template =
+      centered(templatePoints);
+
+
+    let dot = 0;
+    let cross = 0;
+
+
+    for (
+      let i = 0;
+      i < source.length;
+      i++
+    ) {
+
+      dot +=
+        source[i].u * template[i].u +
+        source[i].v * template[i].v;
+
+
+      cross +=
+        source[i].u * template[i].v -
+        source[i].v * template[i].u;
+    }
+
 
     return Math.atan2(
-      sineTerm,
-      cosineTerm
+      cross,
+      dot
     ) * 180 / Math.PI;
   }
 
@@ -1053,7 +1044,11 @@
     );
 
 
-  const FINAL_COMMON_TEMPLATE =
+  /*
+    Common Template 提前固定为全部 Subject
+    共同形成的最终结果。
+  */
+  const FINAL_COMMON_VERTEX =
     commonTemplateFromSubjects(
       subjectData
     );
@@ -1072,26 +1067,10 @@
     }
   ) {
 
-    const xNeg =
-      polarEndpoint(
-        origin,
-        180,
-        axisLen
-      );
-
-
     const xPos =
       polarEndpoint(
         origin,
         0,
-        axisLen
-      );
-
-
-    const yNeg =
-      polarEndpoint(
-        origin,
-        -90,
         axisLen
       );
 
@@ -1104,65 +1083,50 @@
       );
 
 
-    group.appendChild(
-      createSvg(
-        'line',
-        {
-          x1:
-            xNeg.x,
-
-          y1:
-            xNeg.y,
-
-          x2:
-            xPos.x,
-
-          y2:
-            xPos.y,
-
-          stroke:
-            'var(--axis)',
-
-          'stroke-width':
-            template
-              ? 2.5
-              : 1.8,
-
-          'marker-end':
-            'url(#arrowAxis)'
-        }
-      )
-    );
+    const zPos =
+      polarEndpoint(
+        origin,
+        225,
+        axisLen
+      );
 
 
-    group.appendChild(
-      createSvg(
-        'line',
-        {
-          x1:
-            yNeg.x,
+    [
+      xPos,
+      yPos,
+      zPos
+    ].forEach(
+      endpoint => {
+        group.appendChild(
+          createSvg(
+            'line',
+            {
+              x1:
+                origin.x,
 
-          y1:
-            yNeg.y,
+              y1:
+                origin.y,
 
-          x2:
-            yPos.x,
+              x2:
+                endpoint.x,
 
-          y2:
-            yPos.y,
+              y2:
+                endpoint.y,
 
-          stroke:
-            'var(--axis)',
+              stroke:
+                'var(--axis)',
 
-          'stroke-width':
-            template
-              ? 2.5
-              : 1.8,
+              'stroke-width':
+                template
+                  ? 2.5
+                  : 1.8,
 
-          'marker-end':
-            'url(#arrowAxis)'
-        }
-      )
+              'marker-end':
+                'url(#arrowAxis)'
+            }
+          )
+        );
+      }
     );
 
 
@@ -1232,6 +1196,36 @@
 
     group.appendChild(
       vertex2
+    );
+
+
+    const vertex3 =
+      createSvg(
+        'text',
+        {
+          x:
+            zPos.x + 8,
+
+          y:
+            zPos.y + 11,
+
+          class:
+            template
+              ? 'template-axis-label'
+              : 'axis-label',
+
+          'text-anchor':
+            'end'
+        }
+      );
+
+
+    vertex3.textContent =
+      '...';
+
+
+    group.appendChild(
+      vertex3
     );
 
 
@@ -1409,49 +1403,16 @@
        Title
        ------------------------- */
 
-    const titleBox =
-      createSvg(
-        'rect',
-        {
-          x:
-            subject.position.x -
-            SUBJECT_HALF_WIDTH -
-            10,
-
-          y:
-            subject.position.y -
-            SUBJECT_HALF_HEIGHT -
-            13,
-
-          width: 62,
-
-          height: 27,
-
-          rx: 8,
-
-          class:
-            'panel-title-box'
-        }
-      );
-
-
-    group.appendChild(
-      titleBox
-    );
-
     const title =
       createSvg(
         'text',
         {
           x:
-            subject.position.x -
-            SUBJECT_HALF_WIDTH +
-            21,
+            subject.position.x,
 
           y:
             subject.position.y -
-            SUBJECT_HALF_HEIGHT +
-            7,
+            46,
 
           class:
             'panel-title',
@@ -1500,7 +1461,7 @@
 
       y:
         subject.position.y +
-        9
+        16
     };
 
 
@@ -1508,7 +1469,7 @@
       axesGroup,
       origin,
       {
-        axisLen: 52,
+        axisLen: 40,
         template: false
       }
     );
@@ -1522,8 +1483,25 @@
       0.28;
 
 
-    const screenPoints =
+    const initialVertexPoints =
       subject.vertexPoints.map(
+        point => ({
+          ...point
+        })
+      );
+
+
+    let currentRotation = 0;
+
+
+    let animationFrame = null;
+
+
+    let activeAnimation = null;
+
+
+    let screenPoints =
+      initialVertexPoints.map(
         point =>
           vertexPointToScreen(
             origin,
@@ -1603,32 +1581,19 @@
     );
 
 
-    let animationFrame =
-      null;
-
-
-    let activeAnimation =
-      null;
-
-
-    const alignmentAngle =
-      optimalRotationAngle(
-        subject.vertexPoints,
-        FINAL_COMMON_TEMPLATE
-      );
-
-
     function renderRotation(
-      rotationDeg
+      rotation
     ) {
-      const rotatedPoints =
+
+      const rotatedVertexPoints =
         rotateMathPoints(
-          subject.vertexPoints,
-          rotationDeg
+          initialVertexPoints,
+          rotation
         );
 
-      const updatedScreenPoints =
-        rotatedPoints.map(
+
+      screenPoints =
+        rotatedVertexPoints.map(
           point =>
             vertexPointToScreen(
               origin,
@@ -1637,66 +1602,115 @@
             )
         );
 
+
       polygon.setAttribute(
         'points',
-        pointsAttribute(updatedScreenPoints)
+        pointsAttribute(
+          screenPoints
+        )
       );
 
+
       images.forEach(
-        (image, pointIndex) => {
+        (
+          image,
+          pointIndex
+        ) => {
+
           image.setAttribute(
             'x',
-            updatedScreenPoints[pointIndex].x -
-              imageSize / 2
+            screenPoints[pointIndex].x -
+            imageSize / 2
           );
+
 
           image.setAttribute(
             'y',
-            updatedScreenPoints[pointIndex].y -
-              imageSize / 2
+            screenPoints[pointIndex].y -
+            imageSize / 2
           );
         }
       );
+
+
+      currentRotation =
+        rotation;
     }
 
 
     function rotateToTemplate(
-      duration = ROTATION_DURATION
+      duration = MORPH_DURATION
     ) {
-      if (animationFrame) {
-        cancelAnimationFrame(animationFrame);
+
+      if (
+        animationFrame
+      ) {
+        cancelAnimationFrame(
+          animationFrame
+        );
       }
+
+
+      const fromRotation =
+        currentRotation;
+
+
+      const targetRotation =
+        rotationToTemplate(
+          initialVertexPoints,
+          FINAL_COMMON_VERTEX
+        );
+
 
       let startTime =
         performance.now();
 
+
       let pausedAt =
         null;
+
 
       function animate(
         now
       ) {
+
         const rawT =
           Math.min(
             1,
-            (now - startTime) / duration
+            (
+              now - startTime
+            ) / duration
           );
 
-        const eased =
-          easeInOutCubic(rawT);
+
+        const t =
+          easeInOutCubic(
+            rawT
+          );
+
 
         renderRotation(
-          alignmentAngle * eased
+          fromRotation +
+          (
+            targetRotation -
+            fromRotation
+          ) * t
         );
 
-        if (rawT < 1) {
+
+        if (
+          rawT < 1
+        ) {
           animationFrame =
-            requestAnimationFrame(animate);
+            requestAnimationFrame(
+              animate
+            );
         } else {
           animationFrame = null;
           activeAnimation = null;
         }
       }
+
 
       activeAnimation = {
         pause() {
@@ -1720,18 +1734,31 @@
         }
       };
 
+
       animationFrame =
-        requestAnimationFrame(animate);
+        requestAnimationFrame(
+          animate
+        );
     }
 
 
     function resetRotation() {
-      if (animationFrame) {
-        cancelAnimationFrame(animationFrame);
+
+      if (
+        animationFrame
+      ) {
+        cancelAnimationFrame(
+          animationFrame
+        );
+
+
         animationFrame = null;
       }
 
+
       activeAnimation = null;
+
+
       renderRotation(0);
     }
 
@@ -2072,7 +2099,7 @@
       axesGroup,
       templateGeometryOrigin,
       {
-        axisLen: 92,
+        axisLen: 74,
         template: true
       }
     );
@@ -2146,10 +2173,6 @@
 
 
     let animationFrame =
-      null;
-
-
-    let activeAnimation =
       null;
 
 
@@ -2332,10 +2355,6 @@
       }
 
 
-      activeAnimation =
-        null;
-
-
       /*
         第一个 Subject
       */
@@ -2379,12 +2398,8 @@
       );
 
 
-      let startTime =
+      const startTime =
         performance.now();
-
-
-      let pausedAt =
-        null;
 
 
       function animate(
@@ -2453,35 +2468,8 @@
 
           animationFrame =
             null;
-
-
-          activeAnimation =
-            null;
         }
       }
-
-
-      activeAnimation = {
-        pause() {
-          if (!animationFrame || pausedAt !== null) {
-            return;
-          }
-
-          pausedAt = performance.now();
-          cancelAnimationFrame(animationFrame);
-          animationFrame = null;
-        },
-
-        resume() {
-          if (pausedAt === null) {
-            return;
-          }
-
-          startTime += performance.now() - pausedAt;
-          pausedAt = null;
-          animationFrame = requestAnimationFrame(animate);
-        }
-      };
 
 
       animationFrame =
@@ -2508,10 +2496,6 @@
 
 
       currentVertexPoints =
-        null;
-
-
-      activeAnimation =
         null;
 
 
@@ -2548,17 +2532,7 @@
 
     return {
       morphTo,
-      reset,
-      pause() {
-        if (activeAnimation) {
-          activeAnimation.pause();
-        }
-      },
-      resume() {
-        if (activeAnimation) {
-          activeAnimation.resume();
-        }
-      }
+      reset
     };
   }
 
@@ -2587,8 +2561,12 @@
     buildTemplatePanel();
 
 
+  /*
+    Common Template 始终显示全部 Subject
+    形成的最终结果。
+  */
   templatePanel.morphTo(
-    FINAL_COMMON_TEMPLATE
+    FINAL_COMMON_VERTEX
   );
 
 
@@ -2635,11 +2613,29 @@
   }
 
 
-  function rotateAllSubjects() {
+  function alignAllSubjects() {
+
     subjectPanels.forEach(
-      panel =>
-        panel.rotateToTemplate()
+      panel => {
+
+        panel.setActive(
+          true
+        );
+
+
+        panel.rotateToTemplate();
+      }
     );
+
+
+    mappingArrows.forEach(
+      arrow =>
+        arrow.setActive(
+          true
+        )
+    );
+
+
   }
 
 
@@ -2652,20 +2648,17 @@
     document.getAnimations().forEach(animation => animation.play());
 
     subjectPanels.forEach(panel => {
+      panel.setActive(false);
       panel.resetRotation();
-      panel.setActive(true);
     });
 
-    mappingArrows.forEach(arrow => arrow.setActive(true));
+    mappingArrows.forEach(arrow => arrow.setActive(false));
 
     scheduledAction = null;
     paused = false;
     document.getElementById('pauseBtn').textContent = 'Pause';
 
-    scheduleAction(
-      rotateAllSubjects,
-      START_HOLD
-    );
+    scheduleAction(alignAllSubjects, 700);
   }
 
 

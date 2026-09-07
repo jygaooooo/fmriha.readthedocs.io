@@ -44,22 +44,22 @@
       display: flex;
       justify-content: center;
       align-items: flex-start;
-      min-height: 0;
-      padding: 10px;
     }
 
     /*
       整体比例 16:7
     */
     .wrap {
-      width: min(1000px, 96vw);
+      width: 100vw;
+      aspect-ratio: 16 / 7;
     }
 
     .canvas-card {
-      border: 1px solid var(--panel-border);
-      border-radius: 18px;
-      padding: 10px;
-      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+      width: 100%;
+      height: 100%;
+      background: #ffffff;
+      border: 1px solid #e3e7ef;
+      overflow: hidden;
     }
 
     .controls {
@@ -90,8 +90,7 @@
     svg {
       display: block;
       width: 100%;
-      height: auto;
-      overflow: visible;
+      height: 100%;
     }
 
     /*
@@ -128,39 +127,27 @@
 
     .panel-title {
       fill: var(--text);
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 700;
       letter-spacing: 0.15px;
     }
 
-    .panel-title-box {
-      fill: #f5f7fa;
-      stroke: #cfd6e2;
-      stroke-width: 1;
-    }
-
     .template-title {
       fill: var(--text);
-      font-size: 24px;
+      font-size: 22px;
       font-weight: 700;
       letter-spacing: 0.2px;
     }
 
-    .template-title-box {
-      fill: #f3f0fa;
-      stroke: var(--template-light);
-      stroke-width: 1.2;
-    }
-
     .axis-label {
       fill: var(--axis);
-      font-size: 12.5px;
+      font-size: 10.5px;
       font-weight: 700;
     }
 
     .template-axis-label {
       fill: var(--axis);
-      font-size: 16px;
+      font-size: 14px;
       font-weight: 700;
     }
 
@@ -214,7 +201,7 @@
   <div class="canvas-card">
 
     <svg
-      viewBox="350 0 900 700"
+      viewBox="0 0 1600 700"
       preserveAspectRatio="xMidYMid meet"
       aria-label="Subjects dynamically forming a common template"
     >
@@ -316,20 +303,11 @@
            Common Template 内容
            ===================================================== -->
 
-      <rect
-        class="template-title-box"
-        x="625"
-        y="200"
-        width="260"
-        height="38"
-        rx="10"
-      ></rect>
-
       <text
         class="template-title"
-        x="640"
-        y="226"
-        text-anchor="start"
+        x="800"
+        y="268"
+        text-anchor="middle"
       >
         Common Template
       </text>
@@ -370,7 +348,7 @@
   const catImages = [
     'pic/understand_ha/html/cat1.png',
     'pic/understand_ha/html/cat2.png',
-    'pic/understand_ha/html/cat3.png'
+    'pic/understand_ha/html/dog.png'
   ];
 
 
@@ -380,6 +358,8 @@
 
   const STEP_INTERVAL = 1300;
   const MORPH_DURATION = 700;
+  const FINAL_HOLD = 2500;
+  const RESET_HOLD = 700;
 
 
   /* ============================================================
@@ -501,7 +481,7 @@
   */
   const templateGeometryOrigin = {
     x: 767,
-    y: 365
+    y: 373
   };
 
 
@@ -1036,26 +1016,10 @@
     }
   ) {
 
-    const xNeg =
-      polarEndpoint(
-        origin,
-        180,
-        axisLen
-      );
-
-
     const xPos =
       polarEndpoint(
         origin,
         0,
-        axisLen
-      );
-
-
-    const yNeg =
-      polarEndpoint(
-        origin,
-        -90,
         axisLen
       );
 
@@ -1068,65 +1032,50 @@
       );
 
 
-    group.appendChild(
-      createSvg(
-        'line',
-        {
-          x1:
-            xNeg.x,
-
-          y1:
-            xNeg.y,
-
-          x2:
-            xPos.x,
-
-          y2:
-            xPos.y,
-
-          stroke:
-            'var(--axis)',
-
-          'stroke-width':
-            template
-              ? 2.5
-              : 1.8,
-
-          'marker-end':
-            'url(#arrowAxis)'
-        }
-      )
-    );
+    const zPos =
+      polarEndpoint(
+        origin,
+        225,
+        axisLen
+      );
 
 
-    group.appendChild(
-      createSvg(
-        'line',
-        {
-          x1:
-            yNeg.x,
+    [
+      xPos,
+      yPos,
+      zPos
+    ].forEach(
+      endpoint => {
+        group.appendChild(
+          createSvg(
+            'line',
+            {
+              x1:
+                origin.x,
 
-          y1:
-            yNeg.y,
+              y1:
+                origin.y,
 
-          x2:
-            yPos.x,
+              x2:
+                endpoint.x,
 
-          y2:
-            yPos.y,
+              y2:
+                endpoint.y,
 
-          stroke:
-            'var(--axis)',
+              stroke:
+                'var(--axis)',
 
-          'stroke-width':
-            template
-              ? 2.5
-              : 1.8,
+              'stroke-width':
+                template
+                  ? 2.5
+                  : 1.8,
 
-          'marker-end':
-            'url(#arrowAxis)'
-        }
-      )
+              'marker-end':
+                'url(#arrowAxis)'
+            }
+          )
+        );
+      }
     );
 
 
@@ -1196,6 +1145,36 @@
 
     group.appendChild(
       vertex2
+    );
+
+
+    const vertex3 =
+      createSvg(
+        'text',
+        {
+          x:
+            zPos.x + 8,
+
+          y:
+            zPos.y + 11,
+
+          class:
+            template
+              ? 'template-axis-label'
+              : 'axis-label',
+
+          'text-anchor':
+            'end'
+        }
+      );
+
+
+    vertex3.textContent =
+      '...';
+
+
+    group.appendChild(
+      vertex3
     );
 
 
@@ -1373,49 +1352,16 @@
        Title
        ------------------------- */
 
-    const titleBox =
-      createSvg(
-        'rect',
-        {
-          x:
-            subject.position.x -
-            SUBJECT_HALF_WIDTH -
-            10,
-
-          y:
-            subject.position.y -
-            SUBJECT_HALF_HEIGHT -
-            13,
-
-          width: 62,
-
-          height: 27,
-
-          rx: 8,
-
-          class:
-            'panel-title-box'
-        }
-      );
-
-
-    group.appendChild(
-      titleBox
-    );
-
     const title =
       createSvg(
         'text',
         {
           x:
-            subject.position.x -
-            SUBJECT_HALF_WIDTH +
-            21,
+            subject.position.x,
 
           y:
             subject.position.y -
-            SUBJECT_HALF_HEIGHT +
-            7,
+            46,
 
           class:
             'panel-title',
@@ -1464,7 +1410,7 @@
 
       y:
         subject.position.y +
-        9
+        16
     };
 
 
@@ -1472,7 +1418,7 @@
       axesGroup,
       origin,
       {
-        axisLen: 52,
+        axisLen: 40,
         template: false
       }
     );
@@ -1888,7 +1834,7 @@
       axesGroup,
       templateGeometryOrigin,
       {
-        axisLen: 92,
+        axisLen: 74,
         template: true
       }
     );
@@ -2502,17 +2448,44 @@
       currentSubjectIndex++;
 
 
-      if (
-        currentSubjectIndex <
-        subjectData.length
-      ) {
-        scheduleAction(
-          nextSubject,
-          STEP_INTERVAL
-        );
-      }
+      scheduleAction(
+        nextSubject,
+        STEP_INTERVAL
+      );
 
     }
+  }
+
+
+  function resetSequence() {
+
+    subjectPanels.forEach(
+      panel =>
+        panel.setActive(
+          false
+        )
+    );
+
+
+    mappingArrows.forEach(
+      arrow =>
+        arrow.setActive(
+          false
+        )
+    );
+
+
+    templatePanel.reset();
+
+
+    currentSubjectIndex =
+      0;
+
+
+    scheduleAction(
+      nextSubject,
+      RESET_HOLD
+    );
   }
 
 

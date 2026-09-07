@@ -72,13 +72,9 @@ def _copy_understand_ha_assets(app, exception):
     output_notebooks.mkdir(parents=True, exist_ok=True)
 
     for name in [
-        "single_stimuli_profile_alignment.html",
-        "multi_stimuli_profile_alignment.html",
-        "cspace_construct_profile_align.html",
-        "2sub_pattern_align.html",
-        "cspace_construct_pattern_align.html",
-        "alignment_profile_align.html",
-        "alignment_pattern_align.html",
+        "twist.html",
+        "cspace_construct.html",
+        "align.html",
     ]:
         shutil.copy2(source_notebooks / name, output_notebooks / name)
 
@@ -86,7 +82,7 @@ def _copy_understand_ha_assets(app, exception):
     output_pic_dir = output_notebooks / "pic" / "understand_ha" / "html"
     output_pic_dir.mkdir(parents=True, exist_ok=True)
 
-    for name in ["cat1.png", "cat2.png", "cat3.png"]:
+    for name in ["cat1.png", "cat2.png", "dog.png"]:
         shutil.copy2(source_pic_dir / name, output_pic_dir / name)
 
 

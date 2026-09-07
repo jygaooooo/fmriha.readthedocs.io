@@ -1,0 +1,2946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Hyperalignment Procrustes Rotation Demo</title>
+
+<!-- KaTeX: real LaTeX rendering -->
+<link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"
+/>
+
+<style>
+:root {
+  --bg: #ffffff;
+  --panel-border: #d9dee8;
+  --text: #1f2937;
+  --muted: #6b7280;
+  --vertex: #222222;
+
+  --subject1-connector: #E69F00;
+  --subject2-connector: #4C78A8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 10px;
+}
+
+.wrap {
+  width: min(1080px, 96vw);
+}
+
+.controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+button {
+  border: 1px solid #c7d0dc;
+  background: #fff;
+  color: var(--text);
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+}
+
+button:hover {
+  background: #f8fafc;
+}
+
+.canvas-card {
+  border: 1px solid var(--panel-border);
+  border-radius: 18px;
+  padding: 10px;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+}
+
+svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+.panel-box {
+  fill: #fff;
+  stroke: var(--panel-border);
+  stroke-width: 1.2;
+}
+
+.panel-title {
+  font-size: 18px;
+  font-weight: 700;
+  fill: var(--text);
+}
+
+.panel-subtitle {
+  font-size: 13px;
+  fill: var(--muted);
+}
+
+.axis-label {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+
+/*
+  Three independent LaTeX formula sets.
+*/
+
+.formula-panel {
+  width: 100%;
+  min-height: 142px;
+
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+
+  column-gap: 16px;
+
+  align-items: start;
+
+  padding:
+    14px
+    8px
+    4px
+    8px;
+}
+
+.formula-block {
+  min-width: 0;
+  min-height: 118px;
+
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+
+  overflow: visible;
+}
+
+.formula-block .katex-display {
+  margin: 0;
+}
+
+.formula-block .katex {
+  font-size: 1.03em;
+}
+
+@media (max-width: 850px) {
+
+  .formula-panel {
+    grid-template-columns: 1fr;
+    row-gap: 16px;
+  }
+
+  .formula-block {
+    min-height: auto;
+  }
+
+}
+</style>
+</head>
+
+
+<body>
+
+<div class="wrap">
+
+  <div class="canvas-card">
+
+    <svg
+      viewBox="0 0 1045 350"
+      aria-label="Educational animation of point-wise alignment in hyperalignment"
+    >
+
+      <defs>
+
+        <marker
+          id="arrowVertex"
+          markerWidth="10"
+          markerHeight="10"
+          refX="7"
+          refY="3"
+          orient="auto"
+          markerUnits="strokeWidth"
+        >
+          <path
+            d="M0,0 L0,6 L8,3 z"
+            fill="#222222"
+          ></path>
+        </marker>
+
+      </defs>
+
+
+      <!-- Subject 1 -->
+      <rect
+        class="panel-box"
+        x="10"
+        y="24"
+        width="370"
+        height="310"
+        rx="16"
+        ry="16"
+      ></rect>
+
+
+      <!-- Subject 2 -->
+      <rect
+        class="panel-box"
+        x="410"
+        y="24"
+        width="370"
+        height="310"
+        rx="16"
+        ry="16"
+      ></rect>
+
+
+      <text
+        class="panel-title"
+        x="195"
+        y="53"
+        text-anchor="middle"
+      >
+        Subject 1
+      </text>
+
+
+      <text
+        class="panel-subtitle"
+        x="195"
+        y="74"
+        text-anchor="middle"
+      >
+      </text>
+
+
+      <text
+        class="panel-title"
+        x="595"
+        y="53"
+        text-anchor="middle"
+      >
+        Subject 2
+      </text>
+
+
+      <g id="subject1Panel"></g>
+      <g id="subject2Panel"></g>
+
+    </svg>
+
+
+    <!--
+      No titles.
+
+      Only three independent sets
+      of LaTeX equations.
+    -->
+    <div
+      id="formulaPanel"
+      class="formula-panel"
+    >
+
+      <div
+        id="formulaBlock0"
+        class="formula-block"
+      ></div>
+
+      <div
+        id="formulaBlock1"
+        class="formula-block"
+      ></div>
+
+      <div
+        id="formulaBlock2"
+        class="formula-block"
+      ></div>
+
+    </div>
+
+  </div>
+
+  <div class="controls">
+    <button id="replayBtn">Replay</button>
+    <button id="pauseBtn">Pause</button>
+  </div>
+
+</div>
+
+
+<!-- KaTeX renderer -->
+<script
+  src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"
+></script>
+
+
+<script>
+
+const svgNS =
+  "http://www.w3.org/2000/svg";
+
+
+
+/*
+  Subject 1
+*/
+
+const subject1CatPoints = [
+
+  {
+    href: 'pic/understand_ha/html/cat1.png',
+    u: -30,
+    v: 30
+  },
+
+  {
+    href: 'pic/understand_ha/html/cat2.png',
+    u: 30,
+    v: 30
+  },
+
+  {
+    href: 'pic/understand_ha/html/dog.png',
+    u: 0,
+    v: -60
+  }
+
+];
+
+
+
+/*
+  Subject 2
+*/
+
+const subject2CatPoints = [
+
+  {
+    href: 'pic/understand_ha/html/cat1.png',
+    u: -25,
+    v: 30
+  },
+
+  {
+    href: 'pic/understand_ha/html/cat2.png',
+    u: 25,
+    v: 30
+  },
+
+  {
+    href: 'pic/understand_ha/html/dog.png',
+    u: 80,
+    v: -45
+  }
+
+];
+
+
+
+const subject1Cfg = {
+
+  origin: {
+    x: 160,
+    y: 214
+  },
+
+  outerLen: 95,
+
+  thetaDeg: 32,
+
+  points:
+    subject1CatPoints,
+
+  connectorColor:
+    'var(--subject1-connector)'
+
+};
+
+
+
+const subject2Cfg = {
+
+  origin: {
+    x: 560,
+    y: 214
+  },
+
+  outerLen: 95,
+
+  thetaStart: -62,
+
+  points:
+    subject2CatPoints,
+
+  imageOffsetY: -15,
+
+  connectorColor:
+    'var(--subject2-connector)'
+
+};
+
+
+
+/*
+  Timing
+
+  1. Initial hold
+  2. cat1 -> cat2 -> dog
+  3. Brief pause
+  4. Move initial + final triangles out
+  5. Final hold
+*/
+
+const duration =
+  4500;
+
+const holdStart =
+  500;
+
+const comparisonDelay =
+  450;
+
+const comparisonDuration =
+  1500;
+
+const holdEnd =
+  1200;
+
+
+
+/*
+  Move the two line-only triangles
+  into the empty area on the right.
+*/
+
+const comparisonShiftX =
+  290;
+
+const comparisonShiftY =
+  0;
+
+
+
+const pointImageSize =
+  35;
+
+
+
+let loop =
+  false;
+
+let paused =
+  false;
+
+let rafId =
+  null;
+
+let startTime =
+  null;
+
+let lastElapsed =
+  0;
+
+
+
+function createSvg(
+  tag,
+  attrs = {}
+) {
+
+  const el =
+    document.createElementNS(
+      svgNS,
+      tag
+    );
+
+
+  for (
+    const [key, val]
+    of Object.entries(attrs)
+  ) {
+
+    el.setAttribute(
+      key,
+      val
+    );
+
+  }
+
+
+  return el;
+
+}
+
+
+
+function polarEndpoint(
+  origin,
+  angleDeg,
+  length
+) {
+
+  const rad =
+    angleDeg *
+    Math.PI /
+    180;
+
+
+  return {
+
+    x:
+      origin.x +
+      length *
+      Math.cos(rad),
+
+    y:
+      origin.y -
+      length *
+      Math.sin(rad)
+
+  };
+
+}
+
+
+
+function rotateLocalToGlobal(
+  origin,
+  thetaDeg,
+  u,
+  v
+) {
+
+  const rad =
+    thetaDeg *
+    Math.PI /
+    180;
+
+
+  const xMath =
+    u *
+    Math.cos(rad) -
+    v *
+    Math.sin(rad);
+
+
+  const yMath =
+    u *
+    Math.sin(rad) +
+    v *
+    Math.cos(rad);
+
+
+  return {
+
+    x:
+      origin.x +
+      xMath,
+
+    y:
+      origin.y -
+      yMath
+
+  };
+
+}
+
+
+
+function createConnectorLine(
+  color,
+  opacity = 0.78,
+  dashArray = '7 6',
+  width = 2
+) {
+
+  return createSvg(
+    'line',
+    {
+
+      stroke:
+        color,
+
+      'stroke-width':
+        width,
+
+      'stroke-dasharray':
+        dashArray,
+
+      'stroke-linecap':
+        'round',
+
+      opacity:
+        opacity
+
+    }
+  );
+
+}
+
+
+
+function appendAxes(
+  outer,
+  origin,
+  outerLen
+) {
+
+  const xPos =
+    polarEndpoint(
+      origin,
+      0,
+      outerLen
+    );
+
+
+  const yPos =
+    polarEndpoint(
+      origin,
+      90,
+      outerLen
+    );
+
+
+  const zPos =
+    polarEndpoint(
+      origin,
+      225,
+      outerLen
+    );
+
+
+  const morePos =
+    polarEndpoint(
+      origin,
+      190,
+      outerLen
+    );
+
+
+  [
+    xPos,
+    yPos,
+    zPos,
+    morePos
+  ]
+  .forEach(
+    (endpoint) => {
+
+      outer.appendChild(
+        createSvg(
+          'line',
+          {
+
+            x1:
+              origin.x,
+
+            y1:
+              origin.y,
+
+            x2:
+              endpoint.x,
+
+            y2:
+              endpoint.y,
+
+            stroke:
+              'var(--vertex)',
+
+            'stroke-width':
+              2.6,
+
+            'marker-end':
+              'url(#arrowVertex)'
+
+          }
+        )
+      );
+
+    }
+  );
+
+
+  outer.appendChild(
+    createSvg(
+      'circle',
+      {
+
+        cx:
+          origin.x,
+
+        cy:
+          origin.y,
+
+        r:
+          4,
+
+        fill:
+          '#374151'
+
+      }
+    )
+  );
+
+
+  const vertex1Label =
+    createSvg(
+      'text',
+      {
+
+        x:
+          xPos.x + 13,
+
+        y:
+          xPos.y + 6,
+
+        class:
+          'axis-label',
+
+        fill:
+          'var(--vertex)'
+
+      }
+    );
+
+
+  vertex1Label.textContent =
+    'Vertex1';
+
+
+  outer.appendChild(
+    vertex1Label
+  );
+
+
+  const vertex2Label =
+    createSvg(
+      'text',
+      {
+
+        x:
+          yPos.x - 8,
+
+        y:
+          yPos.y - 14,
+
+        class:
+          'axis-label',
+
+        fill:
+          'var(--vertex)'
+
+      }
+    );
+
+
+  vertex2Label.textContent =
+    'Vertex2';
+
+
+  outer.appendChild(
+    vertex2Label
+  );
+
+
+  const vertex3Label =
+    createSvg(
+      'text',
+      {
+
+        x:
+          zPos.x + 15,
+
+        y:
+          zPos.y + 20,
+
+        class:
+          'axis-label',
+
+        fill:
+          'var(--vertex)',
+
+        'text-anchor':
+          'end'
+
+      }
+    );
+
+
+  vertex3Label.textContent =
+    'Vertex3';
+
+
+  outer.appendChild(
+    vertex3Label
+  );
+
+
+  const moreLabel =
+    createSvg(
+      'text',
+      {
+
+        x:
+          morePos.x - 10,
+
+        y:
+          morePos.y + 18,
+
+        class:
+          'axis-label',
+
+        fill:
+          'var(--vertex)',
+
+        'text-anchor':
+          'end'
+
+      }
+    );
+
+
+  moreLabel.textContent =
+    '...';
+
+
+  outer.appendChild(
+    moreLabel
+  );
+
+}
+
+
+
+function buildPanel(
+  containerId,
+  cfg,
+  useGhost = false
+) {
+
+  const g =
+    document.getElementById(
+      containerId
+    );
+
+
+  g.innerHTML =
+    '';
+
+
+  /*
+    Layer order:
+
+    initial triangle
+    current triangle
+    axes
+    images
+  */
+
+  const ghostGroup =
+    createSvg('g');
+
+
+  const connectorGroup =
+    createSvg('g');
+
+
+  const outer =
+    createSvg('g');
+
+
+  const inner =
+    createSvg('g');
+
+
+  g.appendChild(
+    ghostGroup
+  );
+
+
+  g.appendChild(
+    connectorGroup
+  );
+
+
+  g.appendChild(
+    outer
+  );
+
+
+  g.appendChild(
+    inner
+  );
+
+
+  const {
+    origin,
+    outerLen
+  } = cfg;
+
+
+  const points =
+    cfg.points || [];
+
+
+  /*
+    Initial-position triangle.
+  */
+
+  const ghostLines = [
+
+    createConnectorLine(
+      cfg.connectorColor,
+      0.30,
+      '4 6',
+      1.8
+    ),
+
+    createConnectorLine(
+      cfg.connectorColor,
+      0.30,
+      '4 6',
+      1.8
+    ),
+
+    createConnectorLine(
+      cfg.connectorColor,
+      0.30,
+      '4 6',
+      1.8
+    )
+
+  ];
+
+
+  ghostLines.forEach(
+    (line) => {
+
+      line.setAttribute(
+        'display',
+        'none'
+      );
+
+
+      ghostGroup.appendChild(
+        line
+      );
+
+    }
+  );
+
+
+  /*
+    Current / final triangle.
+  */
+
+  const connectorLines = [
+
+    createConnectorLine(
+      cfg.connectorColor,
+      0.78,
+      '7 6',
+      2
+    ),
+
+    createConnectorLine(
+      cfg.connectorColor,
+      0.78,
+      '7 6',
+      2
+    ),
+
+    createConnectorLine(
+      cfg.connectorColor,
+      0.78,
+      '7 6',
+      2
+    )
+
+  ];
+
+
+  connectorLines.forEach(
+    (line) => {
+
+      connectorGroup.appendChild(
+        line
+      );
+
+    }
+  );
+
+
+  appendAxes(
+    outer,
+    origin,
+    outerLen
+  );
+
+
+  const pointItems =
+    points.map(
+      (pointCfg) => {
+
+        const size =
+          pointCfg.size ||
+          pointImageSize;
+
+
+        const point =
+          createSvg(
+            'image',
+            {
+
+              href:
+                pointCfg.href,
+
+              width:
+                size,
+
+              height:
+                size,
+
+              preserveAspectRatio:
+                'xMidYMid meet'
+
+            }
+          );
+
+
+        inner.appendChild(
+          point
+        );
+
+
+        return {
+
+          ...pointCfg,
+
+          size,
+
+          point
+
+        };
+
+      }
+    );
+
+
+
+  function computePositions(
+    thetaDeg,
+    sourcePoints = points,
+    imageOffsetY =
+      cfg.imageOffsetY || 0
+  ) {
+
+    return sourcePoints.map(
+      (pointCfg) => {
+
+        const p =
+          rotateLocalToGlobal(
+
+            origin,
+
+            thetaDeg,
+
+            pointCfg.u,
+
+            pointCfg.v
+
+          );
+
+
+        return {
+
+          x:
+            p.x,
+
+          y:
+            p.y +
+            imageOffsetY
+
+        };
+
+      }
+    );
+
+  }
+
+
+
+  function updateConnectors(
+    lines,
+    positions
+  ) {
+
+    if (
+      positions.length !== 3
+    ) {
+
+      return;
+
+    }
+
+
+    const connections = [
+
+      [0, 1],
+
+      [1, 2],
+
+      [2, 0]
+
+    ];
+
+
+    connections.forEach(
+      ([a, b], index) => {
+
+        lines[index]
+          .setAttribute(
+            'x1',
+            positions[a].x
+          );
+
+
+        lines[index]
+          .setAttribute(
+            'y1',
+            positions[a].y
+          );
+
+
+        lines[index]
+          .setAttribute(
+            'x2',
+            positions[b].x
+          );
+
+
+        lines[index]
+          .setAttribute(
+            'y2',
+            positions[b].y
+          );
+
+      }
+    );
+
+  }
+
+
+
+  function setPositions(
+    positions
+  ) {
+
+    pointItems.forEach(
+      (
+        pointItem,
+        index
+      ) => {
+
+        const p =
+          positions[index];
+
+
+        pointItem.point
+          .setAttribute(
+            'x',
+
+            p.x -
+            pointItem.size /
+            2
+          );
+
+
+        pointItem.point
+          .setAttribute(
+            'y',
+
+            p.y -
+            pointItem.size /
+            2
+          );
+
+      }
+    );
+
+
+    updateConnectors(
+      connectorLines,
+      positions
+    );
+
+  }
+
+
+
+  function update(
+    thetaDeg
+  ) {
+
+    const positions =
+      computePositions(
+        thetaDeg
+      );
+
+
+    setPositions(
+      positions
+    );
+
+  }
+
+
+
+  function setGhostPositions(
+    positions
+  ) {
+
+    updateConnectors(
+      ghostLines,
+      positions
+    );
+
+  }
+
+
+
+  function showGhost() {
+
+    if (!useGhost) {
+      return;
+    }
+
+
+    ghostLines.forEach(
+      (line) => {
+
+        line.setAttribute(
+          'display',
+          'block'
+        );
+
+      }
+    );
+
+  }
+
+
+
+  function hideGhost() {
+
+    ghostLines.forEach(
+      (line) => {
+
+        line.setAttribute(
+          'display',
+          'none'
+        );
+
+      }
+    );
+
+  }
+
+
+
+  function setComparisonShift(
+    dx,
+    dy
+  ) {
+
+    const transform =
+      `translate(${dx} ${dy})`;
+
+
+    ghostGroup.setAttribute(
+      'transform',
+      transform
+    );
+
+
+    connectorGroup.setAttribute(
+      'transform',
+      transform
+    );
+
+  }
+
+
+
+  function setComparisonEmphasis(
+    progress
+  ) {
+
+    const ghostOpacity =
+      0.30 +
+      0.30 *
+      progress;
+
+
+    const ghostWidth =
+      1.8 +
+      0.5 *
+      progress;
+
+
+    const finalOpacity =
+      0.78 +
+      0.22 *
+      progress;
+
+
+    const finalWidth =
+      2 +
+      0.6 *
+      progress;
+
+
+    ghostLines.forEach(
+      (line) => {
+
+        line.setAttribute(
+          'opacity',
+          ghostOpacity
+        );
+
+
+        line.setAttribute(
+          'stroke-width',
+          ghostWidth
+        );
+
+      }
+    );
+
+
+    connectorLines.forEach(
+      (line) => {
+
+        line.setAttribute(
+          'opacity',
+          finalOpacity
+        );
+
+
+        line.setAttribute(
+          'stroke-width',
+          finalWidth
+        );
+
+      }
+    );
+
+  }
+
+
+
+  function resetComparison() {
+
+    setComparisonShift(
+      0,
+      0
+    );
+
+
+    setComparisonEmphasis(
+      0
+    );
+
+  }
+
+
+
+  return {
+
+    update,
+
+    computePositions,
+
+    setPositions,
+
+    setGhostPositions,
+
+    showGhost,
+
+    hideGhost,
+
+    setComparisonShift,
+
+    setComparisonEmphasis,
+
+    resetComparison
+
+  };
+
+}
+
+
+
+const subject1Panel =
+  buildPanel(
+    'subject1Panel',
+    subject1Cfg,
+    false
+  );
+
+
+const subject2Panel =
+  buildPanel(
+    'subject2Panel',
+    subject2Cfg,
+    true
+  );
+
+
+
+/*
+  Subject 1 stays fixed.
+*/
+
+subject1Panel.update(
+  subject1Cfg.thetaDeg
+);
+
+
+
+/*
+  Subject 2 original positions.
+*/
+
+const subject2InitialPositions =
+  subject2Panel.computePositions(
+
+    subject2Cfg.thetaStart,
+
+    subject2CatPoints,
+
+    subject2Cfg.imageOffsetY
+
+  );
+
+
+
+/*
+  Target positions.
+*/
+
+const subject2TargetPositions =
+  subject2Panel.computePositions(
+
+    subject1Cfg.thetaDeg,
+
+    subject1CatPoints,
+
+    0
+
+  );
+
+
+
+subject2Panel.setPositions(
+  subject2InitialPositions
+);
+
+
+subject2Panel.setGhostPositions(
+  subject2InitialPositions
+);
+
+
+subject2Panel.hideGhost();
+
+
+subject2Panel.resetComparison();
+
+
+
+/*
+  ==================================================
+  LaTeX formula rendering
+  ==================================================
+
+  Each transformed point has its own
+  independent 3 x 3 weight matrix.
+
+  Each block is rendered as:
+
+  \begin{aligned}
+    \hat{V}_{1} &= ... \\
+    \hat{V}_{2} &= ... \\
+    \hat{V}_{3} &= ...
+  \end{aligned}
+*/
+
+
+const formulaBlocks = [
+
+  {
+    element:
+      document.getElementById(
+        'formulaBlock0'
+      ),
+
+    lastLatex:
+      ''
+  },
+
+  {
+    element:
+      document.getElementById(
+        'formulaBlock1'
+      ),
+
+    lastLatex:
+      ''
+  },
+
+  {
+    element:
+      document.getElementById(
+        'formulaBlock2'
+      ),
+
+    lastLatex:
+      ''
+  }
+
+];
+
+
+
+function normalizeVector(
+  vector
+) {
+
+  const length =
+    Math.sqrt(
+
+      vector[0] *
+      vector[0] +
+
+      vector[1] *
+      vector[1] +
+
+      vector[2] *
+      vector[2]
+
+    );
+
+
+  if (
+    length <
+    1e-10
+  ) {
+
+    return [
+      0,
+      0,
+      1
+    ];
+
+  }
+
+
+  return [
+
+    vector[0] /
+    length,
+
+    vector[1] /
+    length,
+
+    vector[2] /
+    length
+
+  ];
+
+}
+
+
+
+function dotProduct(
+  a,
+  b
+) {
+
+  return (
+
+    a[0] *
+    b[0] +
+
+    a[1] *
+    b[1] +
+
+    a[2] *
+    b[2]
+
+  );
+
+}
+
+
+
+function crossProduct(
+  a,
+  b
+) {
+
+  return [
+
+    a[1] *
+    b[2] -
+    a[2] *
+    b[1],
+
+    a[2] *
+    b[0] -
+    a[0] *
+    b[2],
+
+    a[0] *
+    b[1] -
+    a[1] *
+    b[0]
+
+  ];
+
+}
+
+
+
+function identityMatrix() {
+
+  return [
+
+    [1, 0, 0],
+
+    [0, 1, 0],
+
+    [0, 0, 1]
+
+  ];
+
+}
+
+
+
+/*
+  Convert displayed position
+  into a 3-dimensional feature vector.
+
+  V1 -> first dimension
+  V2 -> second dimension
+  V3 -> third dimension
+*/
+
+function positionToFeatureVector(
+  position
+) {
+
+  const scale =
+    subject2Cfg.outerLen;
+
+
+  return normalizeVector(
+    [
+
+      (
+        position.x -
+        subject2Cfg.origin.x
+      ) /
+      scale,
+
+      (
+        subject2Cfg.origin.y -
+        position.y
+      ) /
+      scale,
+
+      1
+
+    ]
+  );
+
+}
+
+
+
+/*
+  Compute a proper 3 x 3 rotation
+  matrix from the initial vector
+  to the current vector.
+*/
+
+function rotationMatrixFromTo(
+  fromPosition,
+  toPosition
+) {
+
+  const from =
+    positionToFeatureVector(
+      fromPosition
+    );
+
+
+  const to =
+    positionToFeatureVector(
+      toPosition
+    );
+
+
+  let cosine =
+    dotProduct(
+      from,
+      to
+    );
+
+
+  cosine =
+    Math.max(
+      -1,
+      Math.min(
+        1,
+        cosine
+      )
+    );
+
+
+  if (
+    cosine >
+    0.999999
+  ) {
+
+    return identityMatrix();
+
+  }
+
+
+  let axis =
+    crossProduct(
+      from,
+      to
+    );
+
+
+  let axisLength =
+    Math.sqrt(
+
+      axis[0] *
+      axis[0] +
+
+      axis[1] *
+      axis[1] +
+
+      axis[2] *
+      axis[2]
+
+    );
+
+
+  if (
+    axisLength <
+    1e-8
+  ) {
+
+    axis =
+      crossProduct(
+        from,
+        [1, 0, 0]
+      );
+
+
+    axisLength =
+      Math.sqrt(
+
+        axis[0] *
+        axis[0] +
+
+        axis[1] *
+        axis[1] +
+
+        axis[2] *
+        axis[2]
+
+      );
+
+
+    if (
+      axisLength <
+      1e-8
+    ) {
+
+      axis =
+        crossProduct(
+          from,
+          [0, 1, 0]
+        );
+
+
+      axisLength =
+        Math.sqrt(
+
+          axis[0] *
+          axis[0] +
+
+          axis[1] *
+          axis[1] +
+
+          axis[2] *
+          axis[2]
+
+        );
+
+    }
+
+  }
+
+
+  axis = [
+
+    axis[0] /
+    axisLength,
+
+    axis[1] /
+    axisLength,
+
+    axis[2] /
+    axisLength
+
+  ];
+
+
+  const angle =
+    Math.acos(
+      cosine
+    );
+
+
+  const x =
+    axis[0];
+
+  const y =
+    axis[1];
+
+  const z =
+    axis[2];
+
+
+  const c =
+    Math.cos(
+      angle
+    );
+
+
+  const s =
+    Math.sin(
+      angle
+    );
+
+
+  const t =
+    1 - c;
+
+
+  return [
+
+    [
+
+      t *
+      x *
+      x +
+      c,
+
+      t *
+      x *
+      y -
+      s *
+      z,
+
+      t *
+      x *
+      z +
+      s *
+      y
+
+    ],
+
+    [
+
+      t *
+      x *
+      y +
+      s *
+      z,
+
+      t *
+      y *
+      y +
+      c,
+
+      t *
+      y *
+      z -
+      s *
+      x
+
+    ],
+
+    [
+
+      t *
+      x *
+      z -
+      s *
+      y,
+
+      t *
+      y *
+      z +
+      s *
+      x,
+
+      t *
+      z *
+      z +
+      c
+
+    ]
+
+  ];
+
+}
+
+
+
+/*
+  Keep 3 decimal places.
+
+  Tiny floating-point noise is shown as 0.
+*/
+
+function cleanWeight(
+  value
+) {
+
+  if (
+    Math.abs(value) <
+    0.0005
+  ) {
+
+    return 0;
+
+  }
+
+
+  return value;
+
+}
+
+
+
+function weightNumberLatex(
+  value
+) {
+
+  return Math.abs(
+    cleanWeight(value)
+  )
+  .toFixed(
+    3
+  );
+
+}
+
+
+
+/*
+  Build one term:
+
+  + 0.123 V_2
+  - 0.456 V_3
+*/
+
+function latexTerm(
+  value,
+  vertexIndex,
+  isFirst
+) {
+
+  const cleaned =
+    cleanWeight(
+      value
+    );
+
+
+  const number =
+    weightNumberLatex(
+      cleaned
+    );
+
+
+  const variable =
+    `V_{${vertexIndex}}`;
+
+
+  if (isFirst) {
+
+    if (
+      cleaned < 0
+    ) {
+
+      return (
+        `-${number}\\,${variable}`
+      );
+
+    }
+
+
+    return (
+      `${number}\\,${variable}`
+    );
+
+  }
+
+
+  if (
+    cleaned < 0
+  ) {
+
+    return (
+      `- ${number}\\,${variable}`
+    );
+
+  }
+
+
+  return (
+    `+ ${number}\\,${variable}`
+  );
+
+}
+
+
+
+/*
+  Build one complete row.
+
+  Example:
+
+  \hat{V}_{1}
+  &=
+  0.982V_1
+  +0.103V_2
+  -0.158V_3
+*/
+
+function matrixRowToLatex(
+  rowIndex,
+  row
+) {
+
+  const rightSide =
+
+    latexTerm(
+      row[0],
+      1,
+      true
+    ) +
+
+    `\\;${latexTerm(
+      row[1],
+      2,
+      false
+    )}` +
+
+    `\\;${latexTerm(
+      row[2],
+      3,
+      false
+    )}`;
+
+
+  return (
+
+    `\\hat{V}_{${rowIndex + 1}}` +
+    ` &= ` +
+    rightSide
+
+  );
+
+}
+
+
+
+/*
+  Render all three equations as ONE
+  LaTeX aligned environment.
+
+  This gives proper mathematical
+  vertical alignment at the equals signs.
+*/
+
+function matrixToLatex(
+  matrix
+) {
+
+  return (
+
+    `\\begin{aligned}` +
+
+      matrixRowToLatex(
+        0,
+        matrix[0]
+      ) +
+
+      `\\\\[6pt]` +
+
+      matrixRowToLatex(
+        1,
+        matrix[1]
+      ) +
+
+      `\\\\[6pt]` +
+
+      matrixRowToLatex(
+        2,
+        matrix[2]
+      ) +
+
+    `\\end{aligned}`
+
+  );
+
+}
+
+
+
+/*
+  Actual LaTeX -> KaTeX rendering.
+*/
+
+function showFormulaMatrix(
+  index,
+  matrix
+) {
+
+  const block =
+    formulaBlocks[index];
+
+
+  const latex =
+    matrixToLatex(
+      matrix
+    );
+
+
+  /*
+    Avoid unnecessary rerendering
+    when rounded values did not change.
+  */
+
+  if (
+    block.lastLatex ===
+    latex
+  ) {
+
+    return;
+
+  }
+
+
+  block.lastLatex =
+    latex;
+
+
+  katex.render(
+
+    latex,
+
+    block.element,
+
+    {
+
+      throwOnError:
+        false,
+
+      displayMode:
+        true,
+
+      strict:
+        false
+
+    }
+
+  );
+
+}
+
+
+
+function hideFormulaMatrix(
+  index
+) {
+
+  const block =
+    formulaBlocks[index];
+
+
+  block.element.innerHTML =
+    '';
+
+
+  block.lastLatex =
+    '';
+
+}
+
+
+
+function hideAllFormulas() {
+
+  for (
+    let i = 0;
+    i < formulaBlocks.length;
+    i++
+  ) {
+
+    hideFormulaMatrix(
+      i
+    );
+
+  }
+
+}
+
+
+
+/*
+  Each transformation gets its own
+  dynamically changing matrix.
+
+  Transformation 1:
+  first image
+
+  Transformation 2:
+  second image
+
+  Transformation 3:
+  third image
+*/
+
+function updateTransformationFormulas(
+  positions,
+  globalProgress
+) {
+
+  const pointCount =
+    3;
+
+
+  for (
+    let i = 0;
+    i < pointCount;
+    i++
+  ) {
+
+    const stageStart =
+      i /
+      pointCount;
+
+
+    /*
+      Do not show this formula set
+      until its corresponding
+      transformation begins.
+    */
+
+    if (
+      globalProgress <
+      stageStart
+    ) {
+
+      hideFormulaMatrix(
+        i
+      );
+
+
+      continue;
+
+    }
+
+
+    const matrix =
+      rotationMatrixFromTo(
+
+        subject2InitialPositions[i],
+
+        positions[i]
+
+      );
+
+
+    showFormulaMatrix(
+      i,
+      matrix
+    );
+
+  }
+
+}
+
+
+
+/*
+  At the final state, show the
+  final matrix for all three
+  transformations.
+*/
+
+function showFinalTransformationFormulas() {
+
+  for (
+    let i = 0;
+    i < 3;
+    i++
+  ) {
+
+    const matrix =
+      rotationMatrixFromTo(
+
+        subject2InitialPositions[i],
+
+        subject2TargetPositions[i]
+
+      );
+
+
+    showFormulaMatrix(
+      i,
+      matrix
+    );
+
+  }
+
+}
+
+
+
+function easeInOutCubic(
+  t
+) {
+
+  return t < 0.5
+
+    ? 4 *
+      t *
+      t *
+      t
+
+    : 1 -
+      Math.pow(
+        -2 *
+        t +
+        2,
+        3
+      ) /
+      2;
+
+}
+
+
+
+function interpolate(
+  start,
+  end,
+  t
+) {
+
+  return (
+
+    start +
+
+    (
+      end -
+      start
+    ) *
+
+    t
+
+  );
+
+}
+
+
+
+/*
+  Sequential alignment:
+
+  first point
+  second point
+  third point
+*/
+
+function updateSequentialAlignment(
+  globalProgress
+) {
+
+  const pointCount =
+    3;
+
+
+  const positions =
+    subject2InitialPositions.map(
+      (initialPosition) => ({
+
+        x:
+          initialPosition.x,
+
+        y:
+          initialPosition.y
+
+      })
+    );
+
+
+  for (
+    let i = 0;
+    i < pointCount;
+    i++
+  ) {
+
+    const stageStart =
+      i /
+      pointCount;
+
+
+    const stageEnd =
+      (i + 1) /
+      pointCount;
+
+
+    let localProgress;
+
+
+    if (
+      globalProgress <=
+      stageStart
+    ) {
+
+      localProgress =
+        0;
+
+    }
+
+    else if (
+      globalProgress >=
+      stageEnd
+    ) {
+
+      localProgress =
+        1;
+
+    }
+
+    else {
+
+      localProgress =
+
+        (
+          globalProgress -
+          stageStart
+        ) /
+
+        (
+          stageEnd -
+          stageStart
+        );
+
+    }
+
+
+    const eased =
+      easeInOutCubic(
+        localProgress
+      );
+
+
+    positions[i] = {
+
+      x:
+        interpolate(
+
+          subject2InitialPositions[i].x,
+
+          subject2TargetPositions[i].x,
+
+          eased
+
+        ),
+
+      y:
+        interpolate(
+
+          subject2InitialPositions[i].y,
+
+          subject2TargetPositions[i].y,
+
+          eased
+
+        )
+
+    };
+
+  }
+
+
+  subject2Panel.setPositions(
+    positions
+  );
+
+
+  /*
+    Update the three sets of
+    LaTeX formulas.
+  */
+
+  updateTransformationFormulas(
+    positions,
+    globalProgress
+  );
+
+}
+
+
+
+function updateStartPositions() {
+
+  subject2Panel.setPositions(
+    subject2InitialPositions
+  );
+
+
+  subject2Panel.hideGhost();
+
+
+  subject2Panel.resetComparison();
+
+
+  hideAllFormulas();
+
+}
+
+
+
+function updateEndPositions() {
+
+  subject2Panel.setPositions(
+    subject2TargetPositions
+  );
+
+
+  subject2Panel.showGhost();
+
+
+  showFinalTransformationFormulas();
+
+}
+
+
+
+function animate(
+  ts
+) {
+
+  if (!startTime) {
+
+    startTime =
+      ts;
+
+  }
+
+
+  const elapsed =
+    ts -
+    startTime;
+
+
+  lastElapsed =
+    elapsed;
+
+
+  const alignmentEnd =
+    holdStart +
+    duration;
+
+
+  const comparisonStart =
+    alignmentEnd +
+    comparisonDelay;
+
+
+  const comparisonEnd =
+    comparisonStart +
+    comparisonDuration;
+
+
+  const total =
+    comparisonEnd +
+    holdEnd;
+
+
+
+  /*
+    Stage 0:
+    Initial hold.
+  */
+
+  if (
+    elapsed <
+    holdStart
+  ) {
+
+    updateStartPositions();
+
+  }
+
+
+
+  /*
+    Stage 1:
+    Sequential point transformation.
+  */
+
+  else if (
+    elapsed <
+    alignmentEnd
+  ) {
+
+    subject2Panel.showGhost();
+
+
+    subject2Panel.resetComparison();
+
+
+    const progress =
+
+      (
+        elapsed -
+        holdStart
+      ) /
+
+      duration;
+
+
+    updateSequentialAlignment(
+      progress
+    );
+
+  }
+
+
+
+  /*
+    Stage 2:
+    All three points aligned.
+  */
+
+  else if (
+    elapsed <
+    comparisonStart
+  ) {
+
+    updateEndPositions();
+
+
+    subject2Panel.setComparisonShift(
+      0,
+      0
+    );
+
+
+    subject2Panel.setComparisonEmphasis(
+      0
+    );
+
+  }
+
+
+
+  /*
+    Stage 3:
+    Move the two triangles out.
+  */
+
+  else if (
+    elapsed <
+    comparisonEnd
+  ) {
+
+    updateEndPositions();
+
+
+    const t =
+
+      (
+        elapsed -
+        comparisonStart
+      ) /
+
+      comparisonDuration;
+
+
+    const eased =
+      easeInOutCubic(
+        t
+      );
+
+
+    subject2Panel.setComparisonShift(
+
+      comparisonShiftX *
+      eased,
+
+      comparisonShiftY *
+      eased
+
+    );
+
+
+    subject2Panel.setComparisonEmphasis(
+      eased
+    );
+
+  }
+
+
+
+  /*
+    Stage 4:
+    Final hold.
+  */
+
+  else {
+
+    updateEndPositions();
+
+
+    subject2Panel.setComparisonShift(
+
+      comparisonShiftX,
+
+      comparisonShiftY
+
+    );
+
+
+    subject2Panel.setComparisonEmphasis(
+      1
+    );
+
+  }
+
+
+
+  if (
+    elapsed <
+    total
+  ) {
+
+    rafId =
+      requestAnimationFrame(
+        animate
+      );
+
+  }
+
+
+  else if (loop) {
+
+    startTime =
+      null;
+
+
+    lastElapsed =
+      0;
+
+
+    updateStartPositions();
+
+
+    rafId =
+      requestAnimationFrame(
+        animate
+      );
+
+  }
+
+
+  else {
+
+    cancelAnimationFrame(
+      rafId
+    );
+
+
+    rafId =
+      null;
+
+  }
+
+}
+
+
+
+function replay() {
+
+  if (rafId) {
+
+    cancelAnimationFrame(
+      rafId
+    );
+
+  }
+
+
+  paused =
+    false;
+
+
+  startTime =
+    null;
+
+
+  lastElapsed =
+    0;
+
+
+  document
+    .getElementById(
+      'pauseBtn'
+    )
+    .textContent =
+      'Pause';
+
+
+  updateStartPositions();
+
+
+  rafId =
+    requestAnimationFrame(
+      animate
+    );
+
+}
+
+
+
+document
+  .getElementById(
+    'replayBtn'
+  )
+  .addEventListener(
+    'click',
+    replay
+  );
+
+
+
+document
+  .getElementById(
+    'pauseBtn'
+  )
+  .addEventListener(
+    'click',
+    (event) => {
+
+      if (paused) {
+
+        paused =
+          false;
+
+
+        event.target
+          .textContent =
+            'Pause';
+
+
+        rafId =
+          requestAnimationFrame(
+            (ts) => {
+
+              startTime =
+                ts -
+                lastElapsed;
+
+
+              animate(
+                ts
+              );
+
+            }
+          );
+
+      }
+
+      else {
+
+        paused =
+          true;
+
+
+        event.target
+          .textContent =
+            'Resume';
+
+
+        if (rafId) {
+
+          cancelAnimationFrame(
+            rafId
+          );
+
+
+          rafId =
+            null;
+
+        }
+
+      }
+
+    }
+  );
+
+
+
+replay();
+
+</script>
+
+</body>
+</html>
